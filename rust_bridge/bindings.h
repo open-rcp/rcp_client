@@ -10,12 +10,6 @@ struct RCPRcpResult {
   char *data;
 };
 
-struct RCPUser {
-  char *username;
-  char *display_name;
-  char *email;
-};
-
 struct RCPAppInfo {
   char *id;
   char *name;
@@ -23,22 +17,40 @@ struct RCPAppInfo {
   char *icon_url;
 };
 
+struct RCPUser {
+  char *username;
+  char *display_name;
+  char *email;
+};
+
 extern "C" {
 
-void rcp_free_result(RCPRcpResult result);
+/// # Safety
+///
+/// This function expects valid null-terminated C string pointers.
+RCPRcpResult rcp_connect_to_server(const char *host, int32_t port, int32_t timeout_ms);
 
-void rcp_free_user(RCPUser user);
+/// # Safety
+///
+/// This function expects valid null-terminated C string pointers.
+RCPRcpResult rcp_authenticate(const char *connection_id,
+                              const char *username,
+                              const char *password);
 
-void rcp_free_app_info(RCPAppInfo app);
+/// # Safety
+///
+/// This function expects a valid null-terminated C string pointer.
+RCPRcpResult rcp_get_available_apps(const char *session_id);
 
-RCPRcpResult rcp_init(const char *host, int32_t port);
+/// # Safety
+///
+/// This function expects valid null-terminated C string pointers.
+RCPRcpResult rcp_launch_app(const char *session_id, const char *app_id);
 
-RCPRcpResult rcp_authenticate(const char *username, const char *password);
-
-RCPRcpResult rcp_get_available_apps();
-
-RCPRcpResult rcp_launch_app(const char *app_id);
-
-RCPRcpResult rcp_logout();
+/// # Safety
+///
+/// This function expects a valid pointer to an RcpResult.
+/// It should be called to free memory allocated by previous FFI calls.
+void rcp_free_result(RCPRcpResult *result);
 
 } // extern "C"

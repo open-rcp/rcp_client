@@ -111,7 +111,14 @@ jobs:
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@stable
       with:
-        targets: armv7-linux-androideabi, aarch64-linux-android, i686-linux-android, x86_64-linux-android
+        components: clippy, rustfmt
+        
+    - name: Install Android Rust targets
+      run: |
+        rustup target add armv7-linux-androideabi
+        rustup target add aarch64-linux-android
+        rustup target add i686-linux-android
+        rustup target add x86_64-linux-android
     
     - name: Install dependencies
       run: flutter pub get
@@ -182,7 +189,12 @@ jobs:
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@stable
       with:
-        targets: aarch64-apple-ios, x86_64-apple-ios
+        components: clippy, rustfmt
+        
+    - name: Install iOS Rust targets
+      run: |
+        rustup target add aarch64-apple-ios
+        rustup target add x86_64-apple-ios
     
     - name: Install dependencies
       run: |
@@ -260,7 +272,12 @@ jobs:
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@stable
       with:
-        targets: aarch64-apple-darwin, x86_64-apple-darwin
+        components: clippy, rustfmt
+        
+    - name: Install macOS Rust targets
+      run: |
+        rustup target add aarch64-apple-darwin
+        rustup target add x86_64-apple-darwin
     
     - name: Install dependencies
       run: flutter pub get
@@ -347,7 +364,11 @@ jobs:
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@stable
       with:
-        targets: x86_64-pc-windows-msvc
+        components: clippy, rustfmt
+        
+    - name: Install Windows Rust targets
+      run: |
+        rustup target add x86_64-pc-windows-msvc
     
     - name: Install dependencies
       run: flutter pub get

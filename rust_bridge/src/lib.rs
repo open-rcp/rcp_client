@@ -8,6 +8,8 @@ the Rust-based RCP client libraries.
 use std::ffi::{c_char, CStr, CString};
 use std::ptr;
 
+// Struct definitions for FFI
+
 #[derive(Debug)]
 #[repr(C)]
 pub struct RcpResult {
@@ -61,166 +63,156 @@ fn create_error_result(error: &str) -> RcpResult {
     }
 }
 
-// Helper function to create a result object
-fn create_result(success: bool, error_message: Option<String>, data: Option<String>) -> RcpResult {
-    RcpResult {
-        success,
-        error_message: error_message.map_or(ptr::null_mut(), |e| to_c_string(e)),
-        data: data.map_or(ptr::null_mut(), |d| to_c_string(d)),
-    }
-}
+// FFI functions
 
-// Free memory allocated for RcpResult
+/// # Safety
+///
+/// This function expects valid null-terminated C string pointers.
 #[no_mangle]
-pub extern "C" fn rcp_free_result(result: RcpResult) {
-    unsafe {
-        if !result.error_message.is_null() {
-            let _ = CString::from_raw(result.error_message);
-        }
-        if !result.data.is_null() {
-            let _ = CString::from_raw(result.data);
-        }
+pub unsafe extern "C" fn rcp_connect_to_server(
+    host: *const c_char,
+    port: i32,
+    timeout_ms: i32
+) -> RcpResult {
+    // Validate inputs
+    if host.is_null() {
+        return create_error_result("Host cannot be null");
     }
-}
 
-// Free memory allocated for User
-#[no_mangle]
-pub extern "C" fn rcp_free_user(user: User) {
-    unsafe {
-        if !user.username.is_null() {
-            let _ = CString::from_raw(user.username);
-        }
-        if !user.display_name.is_null() {
-            let _ = CString::from_raw(user.display_name);
-        }
-        if !user.email.is_null() {
-            let _ = CString::from_raw(user.email);
-        }
-    }
-}
-
-// Free memory allocated for AppInfo
-#[no_mangle]
-pub extern "C" fn rcp_free_app_info(app: AppInfo) {
-    unsafe {
-        if !app.id.is_null() {
-            let _ = CString::from_raw(app.id);
-        }
-        if !app.name.is_null() {
-            let _ = CString::from_raw(app.name);
-        }
-        if !app.description.is_null() {
-            let _ = CString::from_raw(app.description);
-        }
-        if !app.icon_url.is_null() {
-            let _ = CString::from_raw(app.icon_url);
-        }
-    }
-}
-
-// Initialize the RCP client
-#[no_mangle]
-pub extern "C" fn rcp_init(host: *const c_char, port: i32) -> RcpResult {
-    let host_str = match from_c_string(host) {
+    // Convert C string to Rust string
+    let host_str = match CStr::from_ptr(host).to_str() {
         Ok(s) => s,
-        Err(e) => return create_result(false, Some(e), None),
+        Err(_) => return create_error_result("Invalid UTF-8 in host string"),
+    };
+
+    // TODO: Implement actual connection logic using RCP libraries
+    println!("Connecting to {}:{} (timeout: {}ms)", host_str, port, timeout_ms);
+
+    // For now, simulate a successful connection
+    create_success_result("{\"connectionId\":\"mock-123\",\"serverVersion\":\"1.0.0\"}")
+}
+
+/// # Safety
+///
+/// This function expects valid null-terminated C string pointers.
+#[no_mangle]
+pub unsafe extern "C" fn rcp_authenticate(
+    connection_id: *const c_char,
+    username: *const c_char,
+    password: *const c_char
+) -> RcpResult {
+    // Validate inputs
+    if connection_id.is_null() || username.is_null() || password.is_null() {
+        return create_error_result("Connection ID, username, and password cannot be null");
+    }
+
+    // Convert C strings to Rust strings
+    let connection_id_str = match CStr::from_ptr(connection_id).to_str() {
+        Ok(s) => s,
+        Err(_) => return create_error_result("Invalid UTF-8 in connection ID"),
     };
     
-    // Create a simple runtime for async operations
-    match Runtime::new() {
-        Ok(rt) => {
-            let config = ClientConfig {
-                server_host: host_str,
-                server_port: port as u16,
-                // Add other config options as needed
-                ..Default::default()
-            };
-            
-            match rt.block_on(async {
-                Client::new(config).await
-            }) {
-                Ok(_client) => {
-                    // Store client in a global state or return a client handle
-                    // This is simplified and should use proper state management
-                    create_result(true, None, None)
-                },
-                Err(e) => create_result(false, Some(format!("Failed to initialize client: {}", e)), None),
-            }
-        },
-        Err(e) => create_result(false, Some(format!("Failed to create runtime: {}", e)), None),
+    let username_str = match CStr::from_ptr(username).to_str() {
+        Ok(s) => s,
+        Err(_) => return create_error_result("Invalid UTF-8 in username"),
+    };
+
+    // Password is validated but not printed for security
+    let _password_str = match CStr::from_ptr(password).to_str() {
+        Ok(_) => "********",
+        Err(_) => return create_error_result("Invalid UTF-8 in password"),
+    };
+
+    // TODO: Implement actual authentication logic
+    println!("Authenticating user {} on connection {}", username_str, connection_id_str);
+
+    // Simulate successful authentication
+    create_success_result("{\"sessionId\":\"sess-456\",\"userId\":\"user-789\",\"tokenExpiry\":3600}")
+}
+
+/// # Safety
+///
+/// This function expects a valid null-terminated C string pointer.
+#[no_mangle]
+pub unsafe extern "C" fn rcp_get_available_apps(
+    session_id: *const c_char
+) -> RcpResult {
+    // Validate input
+    if session_id.is_null() {
+        return create_error_result("Session ID cannot be null");
     }
-}
 
-// Authenticate a user
-#[no_mangle]
-pub extern "C" fn rcp_authenticate(username: *const c_char, password: *const c_char) -> RcpResult {
-    let username_str = match from_c_string(username) {
+    // Convert C string to Rust string
+    let session_id_str = match CStr::from_ptr(session_id).to_str() {
         Ok(s) => s,
-        Err(e) => return create_result(false, Some(e), None),
+        Err(_) => return create_error_result("Invalid UTF-8 in session ID"),
     };
-    
-    let password_str = match from_c_string(password) {
-        Ok(s) => s,
-        Err(e) => return create_result(false, Some(e), None),
-    };
-    
-    // Implementation would authenticate with the RCP server
-    // This is a simplified example that would need proper implementation
-    
-    // Mock successful authentication for demonstration
-    let user_json = format!(r#"{{
-        "username": "{}",
-        "displayName": "Test User",
-        "email": "{}@example.com"
-    }}"#, username_str, username_str);
-    
-    create_result(true, None, Some(user_json))
-}
 
-// Get available applications
-#[no_mangle]
-pub extern "C" fn rcp_get_available_apps() -> RcpResult {
-    // Implementation would fetch apps from RCP server
-    // This is a simplified example
-    
-    // Mock apps data for demonstration
+    // TODO: Implement actual app listing logic
+    println!("Getting available apps for session {}", session_id_str);
+
+    // Simulate a list of apps in JSON format
     let apps_json = r#"[
-        {
-            "id": "app1",
-            "name": "Application 1",
-            "description": "Sample application 1",
-            "iconUrl": ""
-        },
-        {
-            "id": "app2",
-            "name": "Application 2", 
-            "description": "Sample application 2",
-            "iconUrl": ""
-        }
+      {"id": "app1", "name": "Terminal", "description": "Command-line interface", "icon_url": "terminal.png"},
+      {"id": "app2", "name": "Browser", "description": "Web browser", "icon_url": "browser.png"},
+      {"id": "app3", "name": "Editor", "description": "Text editor", "icon_url": "editor.png"}
     ]"#;
-    
-    create_result(true, None, Some(apps_json.to_string()))
+
+    create_success_result(apps_json)
 }
 
-// Launch an application
+/// # Safety
+///
+/// This function expects valid null-terminated C string pointers.
 #[no_mangle]
-pub extern "C" fn rcp_launch_app(app_id: *const c_char) -> RcpResult {
-    let app_id_str = match from_c_string(app_id) {
+pub unsafe extern "C" fn rcp_launch_app(
+    session_id: *const c_char,
+    app_id: *const c_char
+) -> RcpResult {
+    // Validate inputs
+    if session_id.is_null() || app_id.is_null() {
+        return create_error_result("Session ID and app ID cannot be null");
+    }
+
+    // Convert C strings to Rust strings
+    let session_id_str = match CStr::from_ptr(session_id).to_str() {
         Ok(s) => s,
-        Err(e) => return create_result(false, Some(e), None),
+        Err(_) => return create_error_result("Invalid UTF-8 in session ID"),
     };
     
-    // Implementation would launch the app via RCP server
-    // This is a simplified example
-    
-    create_result(true, None, None)
+    let app_id_str = match CStr::from_ptr(app_id).to_str() {
+        Ok(s) => s,
+        Err(_) => return create_error_result("Invalid UTF-8 in app ID"),
+    };
+
+    // TODO: Implement actual app launching logic
+    println!("Launching app {} for session {}", app_id_str, session_id_str);
+
+    // Simulate successful app launch
+    create_success_result("{\"launchId\":\"launch-101\",\"displayUrl\":\"ws://server/display/101\"}")
 }
 
-// Log out the current user
+/// # Safety
+///
+/// This function expects a valid pointer to an RcpResult.
+/// It should be called to free memory allocated by previous FFI calls.
 #[no_mangle]
-pub extern "C" fn rcp_logout() -> RcpResult {
-    // Implementation would log out via RCP server
-    // This is a simplified example
+pub unsafe extern "C" fn rcp_free_result(result: *mut RcpResult) {
+    if result.is_null() {
+        return;
+    }
     
-    create_result(true, None, None)
+    let result_ref = &mut *result;
+    
+    // Free the error message if it exists
+    if !result_ref.error_message.is_null() {
+        let _ = CString::from_raw(result_ref.error_message);
+        result_ref.error_message = ptr::null_mut();
+    }
+    
+    // Free the data if it exists
+    if !result_ref.data.is_null() {
+        let _ = CString::from_raw(result_ref.data);
+        result_ref.data = ptr::null_mut();
+    }
 }

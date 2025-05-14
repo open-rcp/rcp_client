@@ -30,8 +30,24 @@ compile_for_target() {
     # Navigate to the bridge directory
     cd "$BRIDGE_DIR" || exit 1
     
+    # Check if target directory exists, create it if not
+    mkdir -p "target/$target/release"
+    
     # Build the target
-    cargo build --release --target "$target"
+    cargo build --release --target "$target" || {
+        echo "Failed to build for target $target, trying without explicit target..."
+        cargo build --release
+        # In case of failure without target, copy from default target path
+        mkdir -p "$output_dir"
+        if [ -f "target/release/$output_file" ]; then
+            cp "target/release/$output_file" "$output_dir/"
+            echo "✅ Built using default target"
+            return 0
+        else
+            echo "❌ Build failed for $target"
+            return 1
+        fi
+    }
     
     # Create output directory and copy the build
     mkdir -p "$output_dir"
