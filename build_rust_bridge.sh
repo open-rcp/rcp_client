@@ -1,5 +1,18 @@
 #!/bin/bash
 # Build script for compiling the Rust FFI bridge for all platforms
+# 
+# This script builds the Rust FFI bridge for multiple platforms to enable
+# Flutter to interface with native Rust code. It handles:
+#
+# 1. Building for macOS (x86_64-apple-darwin, aarch64-apple-darwin)
+# 2. Building for iOS (aarch64-apple-ios, x86_64-apple-ios for simulator)
+# 3. Building for Android (multiple ABIs)
+# 4. Building for Windows (x86_64-pc-windows-msvc)
+# 5. Building for Linux (x86_64-unknown-linux-gnu)
+#
+# The script has fallback mechanisms to handle cases where specific targets
+# aren't available, ensuring CI builds can still succeed.
+
 set -e
 
 # Get the absolute path of the script directory
@@ -56,6 +69,23 @@ compile_for_target() {
     echo "✅ Build for $target completed"
 }
 
+# Print summary after all builds are done
+print_summary() {
+    echo ""
+    echo "============================================================="
+    echo "🎉 Rust bridge build summary"
+    echo "============================================================="
+    echo "✅ Default target library created at: $OUTPUT_DIR/librcp_bridge.a"
+    
+    # Add more details about available targets, etc.
+    if rustup target list --installed | grep -q "installed"; then
+        echo "📋 Available Rust targets:"
+        rustup target list --installed
+    fi
+    
+    echo "=============================================================\n"
+}
+
 # Build for all supported platforms
 if [[ "$OSTYPE" == "darwin"* ]]; then
     # macOS
@@ -103,3 +133,4 @@ elif [[ "$OSTYPE" == "msys"* || "$OSTYPE" == "win32" ]]; then
 fi
 
 echo "All builds completed successfully"
+print_summary

@@ -2,6 +2,8 @@
 
 A cross-platform client for the Remote Computing Protocol (RCP) system, built using Flutter and Rust with a dependency-free architecture.
 
+![CI Status](https://github.com/open-rcp/rcp_client/actions/workflows/ci.yml/badge.svg)
+
 ## Overview
 
 The RCP Client is designed to provide a modern, cross-platform solution for connecting to RCP servers. It leverages Flutter's UI capabilities while integrating with the Rust-based RCP client libraries through a dedicated Foreign Function Interface (FFI) bridge, ensuring clean separation of concerns and minimizing dependencies.
@@ -202,13 +204,12 @@ The script handles platform-specific paths for Windows (.dll) and Linux (.so) li
 
 ## Documentation
 
-Additional documentation is available:
-
 - [FFI_BRIDGE_DOCS.md](FFI_BRIDGE_DOCS.md) - Detailed documentation on the FFI bridge architecture
 - [INTEGRATION.md](INTEGRATION.md) - Overview of the dependency-free integration approach
 - [MIGRATION_PLAN.md](MIGRATION_PLAN.md) - Plan for migrating to the new architecture
 - [NATIVE_LIBRARY_SETUP.md](NATIVE_LIBRARY_SETUP.md) - Instructions for setting up native libraries
 - [rust_bridge/CBINDGEN_CONFIG_DOCS.md](rust_bridge/CBINDGEN_CONFIG_DOCS.md) - Documentation for cbindgen configuration
+- [CI_CD_PROCESS.md](./CI_CD_PROCESS.md) - CI/CD Process Documentation
 
 ## Troubleshooting
 
