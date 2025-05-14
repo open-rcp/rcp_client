@@ -1,9 +1,12 @@
-use rcp_client::{Client, ClientConfig};
-use rcp_core::models::{AppInfo as RcpAppInfo, User as RcpUser};
+/*!
+Bridge module for FFI between Flutter RCP client and Rust
+
+This module provides FFI functions for the Flutter RCP client to interact with
+the Rust-based RCP client libraries.
+*/
+
 use std::ffi::{c_char, CStr, CString};
 use std::ptr;
-use std::sync::Arc;
-use tokio::runtime::Runtime;
 
 #[derive(Debug)]
 #[repr(C)]
@@ -30,25 +33,31 @@ pub struct AppInfo {
     icon_url: *mut c_char,
 }
 
-// Helper function to create a C string from Rust string
-fn to_c_string(s: String) -> *mut c_char {
-    match CString::new(s) {
-        Ok(c_str) => c_str.into_raw(),
+// Helper functions
+
+fn create_success_result(data: &str) -> RcpResult {
+    let c_data = match CString::new(data) {
+        Ok(s) => s.into_raw(),
         Err(_) => ptr::null_mut(),
+    };
+    
+    RcpResult {
+        success: true,
+        error_message: ptr::null_mut(),
+        data: c_data,
     }
 }
 
-// Helper function to get Rust string from C string
-fn from_c_string(s: *const c_char) -> Result<String, String> {
-    if s.is_null() {
-        return Err("Null pointer provided".to_string());
-    }
+fn create_error_result(error: &str) -> RcpResult {
+    let c_error = match CString::new(error) {
+        Ok(s) => s.into_raw(),
+        Err(_) => ptr::null_mut(),
+    };
     
-    unsafe {
-        CStr::from_ptr(s)
-            .to_str()
-            .map(|s| s.to_string())
-            .map_err(|e| format!("Invalid UTF-8: {}", e))
+    RcpResult {
+        success: false,
+        error_message: c_error,
+        data: ptr::null_mut(),
     }
 }
 

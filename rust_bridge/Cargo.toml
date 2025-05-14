@@ -8,9 +8,11 @@ name = "rcpb"
 crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
-# Core dependencies from workspace
-rcpp = { path = "../../rcpp" }
-rcpc = { path = "../../rcpc" }
+# No direct dependencies on RCP components yet
+# Will implement standalone functionality for now
+# TODO: Use crates.io versions when available
+# rcpp = "0.1.0"
+# rcpc = "0.1.0"
 
 # FFI support
 ffi = "0.1.1"
