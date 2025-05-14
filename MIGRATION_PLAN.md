@@ -18,7 +18,7 @@ This document outlines the steps to transition the Flutter RCP client to be depe
 - [ ] Build the Rust bridge for your primary development platform:
 
 ```bash
-cd flutter_rcp_client
+cd rcp_client
 ./build_rust_bridge.sh
 ```
 

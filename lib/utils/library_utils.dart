@@ -56,8 +56,8 @@ class LibraryUtils {
         // Try finding the library in alternative locations
         final alternatives = [
           path.join(Directory.current.path, 'macos', 'Runner', 'Frameworks', libraryName),
-          '/Volumes/EXT/repos/open-rcp/rcp/flutter_rcp_client/rust/target/release/$libraryName',
-          '/Volumes/EXT/repos/open-rcp/rcp/flutter_rcp_client/macos/Runner/Frameworks/$libraryName',
+          '/Volumes/EXT/repos/open-rcp/rcp/rcp_client/rust/target/release/$libraryName',
+          '/Volumes/EXT/repos/open-rcp/rcp/rcp_client/macos/Runner/Frameworks/$libraryName',
         ];
         
         bool found = false;

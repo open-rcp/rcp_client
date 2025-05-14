@@ -20,7 +20,7 @@ The Flutter RCP client uses a dedicated Rust FFI bridge to communicate with the 
 
 1. Navigate to the Flutter RCP client directory:
    ```zsh
-   cd /Volumes/EXT/repos/open-rcp/rcp/flutter_rcp_client
+   cd /Volumes/EXT/repos/open-rcp/rcp/rcp_client
    ```
 
 2. Run the build script to compile the Rust bridge for your platform:
@@ -40,7 +40,7 @@ The Flutter RCP client uses a dedicated Rust FFI bridge to communicate with the 
 The FFI bridge has the following structure:
 
 ```
-flutter_rcp_client/
+rcp_client/
 ├── rust_bridge/           # Rust FFI bridge code
 │   ├── Cargo.toml         # Dependencies and build configuration
 │   ├── cbindgen.toml      # C binding generation config
@@ -57,11 +57,11 @@ If you encounter library loading issues:
 
 ### "Failed to initialize RCP service: Could not find native library"
 
-This error means the application can't locate the `libflutter_rcp_bridge.dylib` file. Try these steps:
+This error means the application can't locate the `librcpb.dylib` file. Try these steps:
 
 1. Ensure the Rust bridge is built:
    ```zsh
-   cd /Volumes/EXT/repos/open-rcp/rcp/flutter_rcp_client
+   cd /Volumes/EXT/repos/open-rcp/rcp/rcp_client
    ./build_rust_bridge.sh
    ```
 
@@ -71,9 +71,9 @@ This error means the application can't locate the `libflutter_rcp_bridge.dylib` 
    ```
 
 3. Check if the library exists in the following locations:
-   - `rust_bridge/target/release/libflutter_rcp_bridge.dylib`
-   - `macos/Frameworks/libflutter_rcp_bridge.dylib`
-   - `build/macos/Build/Products/Debug/flutter_rcp_client.app/Contents/Frameworks/libflutter_rcp_bridge.dylib`
+   - `rust_bridge/target/release/librcpb.dylib`
+   - `macos/Frameworks/librcpb.dylib`
+   - `build/macos/Build/Products/Debug/rcp_client.app/Contents/Frameworks/librcpb.dylib`
 
 4. Clean and rebuild the Flutter app:
    ```zsh
@@ -108,7 +108,7 @@ If you're seeing sandbox-related errors, check that:
 The application uses a robust library loading mechanism:
 
 1. First attempts to load from platform-specific standard locations:
-   - macOS: `@executable_path/../Frameworks/libflutter_rcp_bridge.dylib`
+   - macOS: `@executable_path/../Frameworks/librcpb.dylib`
    - iOS: Embedded in app bundle
    - Android: From appropriate `jniLibs` directory
    - Windows and Linux: From application directory
@@ -121,12 +121,12 @@ The library uses a new architecture where the Flutter RCP client is dependency-f
 
 ### macOS
 
-On macOS, the library is named `libflutter_rcp_bridge.dylib` and should be in `macos/Frameworks/`. 
+On macOS, the library is named `librcpb.dylib` and should be in `macos/Frameworks/`. 
 
 To check if the library is properly loaded:
 
 ```zsh
-otool -L macos/Frameworks/libflutter_rcp_bridge.dylib
+otool -L macos/Frameworks/librcpb.dylib
 ```
 
 ### iOS

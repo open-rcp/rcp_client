@@ -31,4 +31,4 @@ flutter build macos --release
 echo "✅ Flutter RCP Client build for macOS completed!"
 echo ""
 echo "You can now run the app with:"
-echo "open build/macos/Build/Products/Release/flutter_rcp_client.app"
+echo "open build/macos/Build/Products/Release/rcp_client.app"

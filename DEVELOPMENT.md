@@ -31,7 +31,7 @@ The Flutter RCP client uses a dependency-free architecture where all Rust depend
 
 2. Run the setup script to configure the development environment:
    ```bash
-   cd flutter_rcp_client
+   cd rcp_client
    chmod +x setup_dev_environment.sh
    ./setup_dev_environment.sh
    ```

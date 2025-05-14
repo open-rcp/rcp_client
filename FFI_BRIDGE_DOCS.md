@@ -79,18 +79,18 @@ Key sections:
 
 ```toml
 [package]
-name = "flutter_rcp_bridge"
+name = "rcpb"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "flutter_rcp_bridge"
+name = "rcpb"
 crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
 # Core dependencies from workspace
-rcp-core = { path = "../../rcp-core" }
-rcp-client = { path = "../../rcp-client" }
+rcpp = { path = "../../rcpp" }
+rcpc = { path = "../../rcpc" }
 
 # FFI support
 ffi = "1.0"

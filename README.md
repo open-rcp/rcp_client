@@ -95,7 +95,7 @@ This architecture ensures the Flutter client remains dependency-free from other 
 ## Project Structure
 
 ```
-flutter_rcp_client/
+rcp_client/
 ├── lib/                 # Dart/Flutter code
 │   ├── models/          # Data models
 │   ├── screens/         # UI screens
@@ -164,7 +164,7 @@ For macOS, the library is automatically placed in the correct location by the `c
 
 ```zsh
 mkdir -p macos/Frameworks
-cp build/native_assets/macos/libflutter_rcp_bridge.dylib macos/Frameworks/
+cp build/native_assets/macos/librcpb.dylib macos/Frameworks/
 ```
 
 ### iOS
@@ -173,7 +173,7 @@ For iOS, the static library is embedded during the build process:
 
 ```zsh
 mkdir -p ios/Frameworks
-cp build/native_assets/ios/libflutter_rcp_bridge.a ios/Frameworks/
+cp build/native_assets/ios/librcpb.a ios/Frameworks/
 ```
 
 ### Android

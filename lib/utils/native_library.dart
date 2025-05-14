@@ -1,4 +1,4 @@
-// filepath: /Volumes/EXT/repos/open-rcp/rcp/flutter_rcp_client/lib/utils/native_library.dart
+// filepath: /Volumes/EXT/repos/open-rcp/rcp/rcp_client/lib/utils/native_library.dart
 import 'dart:ffi';
 import 'dart:io';
 import 'package:path/path.dart' as path;
@@ -87,7 +87,7 @@ class NativeLibrary {
           '1. Build the Rust library: cd rust && cargo build --release\n'
           '2. Run the copy script: ./copy_macos_libs.sh\n'
           '3. Clean and rebuild: flutter clean && flutter build macos --debug\n\n'
-          'The library should be located at: build/macos/Build/Products/Debug/flutter_rcp_client.app/Contents/Frameworks/${libraryName}');
+          'The library should be located at: build/macos/Build/Products/Debug/rcp_client.app/Contents/Frameworks/${libraryName}');
     } else {
       // Windows and Linux
       final locations = await _getPossibleLibraryLocations();
@@ -139,14 +139,14 @@ class NativeLibrary {
     
     // Add project-specific paths for development
     result.add('$projectPath/macos/Runner/Frameworks/${libraryName}');
-    result.add('$projectPath/build/macos/Build/Products/Debug/flutter_rcp_client.app/Contents/Frameworks/${libraryName}');
-    result.add('$projectPath/build/macos/Build/Products/Release/flutter_rcp_client.app/Contents/Frameworks/${libraryName}');
+    result.add('$projectPath/build/macos/Build/Products/Debug/rcp_client.app/Contents/Frameworks/${libraryName}');
+    result.add('$projectPath/build/macos/Build/Products/Release/rcp_client.app/Contents/Frameworks/${libraryName}');
     result.add('$projectPath/rust/target/release/${libraryName}');
     result.add('$projectPath/rust/target/debug/${libraryName}');
     
     // Add standard development paths
-    result.add(path.join(rootDir, 'flutter_rcp_client', 'macos', 'Runner', 'Frameworks', libraryName));
-    result.add(path.join(rootDir, 'flutter_rcp_client', 'rust', 'target', 'release', libraryName));
+    result.add(path.join(rootDir, 'rcp_client', 'macos', 'Runner', 'Frameworks', libraryName));
+    result.add(path.join(rootDir, 'rcp_client', 'rust', 'target', 'release', libraryName));
     
     // Add platform-specific paths
     if (Platform.isMacOS) {

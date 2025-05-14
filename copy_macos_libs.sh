@@ -10,7 +10,7 @@ ROOT_DIR="$SCRIPT_DIR"
 
 # Source directory (Rust build output)
 SOURCE_DIR="$ROOT_DIR/rust_bridge/target/release"
-LIB_NAME="libflutter_rcp_bridge.dylib"
+LIB_NAME="librcpb.dylib"
 SOURCE_PATH="$SOURCE_DIR/$LIB_NAME"
 
 # Alternative source from build directory
@@ -23,8 +23,8 @@ DEST_PATH="$DEST_DIR/$LIB_NAME"
 
 # Additional target for debug/release build
 BUILD_DIR="$ROOT_DIR/build/macos/Build/Products"
-DEBUG_FRAMEWORKS="$BUILD_DIR/Debug/flutter_rcp_client.app/Contents/Frameworks"
-RELEASE_FRAMEWORKS="$BUILD_DIR/Release/flutter_rcp_client.app/Contents/Frameworks"
+DEBUG_FRAMEWORKS="$BUILD_DIR/Debug/rcp_client.app/Contents/Frameworks"
+RELEASE_FRAMEWORKS="$BUILD_DIR/Release/rcp_client.app/Contents/Frameworks"
 
 # Check if the library exists in either location
 if [ -f "$SOURCE_PATH" ]; then

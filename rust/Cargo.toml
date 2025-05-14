@@ -13,4 +13,4 @@ crate-type = ["cdylib"]
 
 [dependencies]
 # Add dependencies on the RCP client libraries here
-# rcp_client = { path = "../../rcp-client" }
+# rcp_client = { path = "../../rcpc" }

@@ -4,7 +4,7 @@ set -e
 
 # Get the absolute path of the script directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-ROOT_DIR="$SCRIPT_DIR"  # The root is actually the flutter_rcp_client directory
+ROOT_DIR="$SCRIPT_DIR"  # The root is actually the rcp_client directory
 BRIDGE_DIR="$ROOT_DIR/rust_bridge"
 OUTPUT_DIR="$ROOT_DIR/build/native_assets"
 
@@ -44,46 +44,46 @@ compile_for_target() {
 if [[ "$OSTYPE" == "darwin"* ]]; then
     # macOS
     echo "Building for macOS..."
-    compile_for_target "x86_64-apple-darwin" "libflutter_rcp_bridge.dylib" "$OUTPUT_DIR/macos"
+    compile_for_target "x86_64-apple-darwin" "librcpb.dylib" "$OUTPUT_DIR/macos"
     
     # iOS
     echo "Building for iOS..."
-    compile_for_target "aarch64-apple-ios" "libflutter_rcp_bridge.a" "$OUTPUT_DIR/ios"
-    compile_for_target "x86_64-apple-ios" "libflutter_rcp_bridge.a" "$OUTPUT_DIR/ios"
+    compile_for_target "aarch64-apple-ios" "librcpb.a" "$OUTPUT_DIR/ios"
+    compile_for_target "x86_64-apple-ios" "librcpb.a" "$OUTPUT_DIR/ios"
     
     # Copy to project directory for easy access during development
     mkdir -p "$ROOT_DIR/macos/Frameworks"
-    cp "$OUTPUT_DIR/macos/libflutter_rcp_bridge.dylib" "$ROOT_DIR/macos/Frameworks/"
+    cp "$OUTPUT_DIR/macos/librcpb.dylib" "$ROOT_DIR/macos/Frameworks/"
     
 elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
     # Linux
     echo "Building for Linux..."
-    compile_for_target "x86_64-unknown-linux-gnu" "libflutter_rcp_bridge.so" "$OUTPUT_DIR/linux"
+    compile_for_target "x86_64-unknown-linux-gnu" "librcpb.so" "$OUTPUT_DIR/linux"
     
     # Android (requires Android NDK setup)
     if [ -d "$ANDROID_NDK_HOME" ]; then
         echo "Building for Android..."
-        compile_for_target "aarch64-linux-android" "libflutter_rcp_bridge.so" "$OUTPUT_DIR/android/arm64-v8a"
-        compile_for_target "armv7-linux-androideabi" "libflutter_rcp_bridge.so" "$OUTPUT_DIR/android/armeabi-v7a"
-        compile_for_target "x86_64-linux-android" "libflutter_rcp_bridge.so" "$OUTPUT_DIR/android/x86_64"
+        compile_for_target "aarch64-linux-android" "librcpb.so" "$OUTPUT_DIR/android/arm64-v8a"
+        compile_for_target "armv7-linux-androideabi" "librcpb.so" "$OUTPUT_DIR/android/armeabi-v7a"
+        compile_for_target "x86_64-linux-android" "librcpb.so" "$OUTPUT_DIR/android/x86_64"
     else
         echo "Android NDK not found. Skipping Android build."
     fi
     
     # Copy to project directory for easy access during development
     mkdir -p "$ROOT_DIR/linux/bundle/lib"
-    cp "$OUTPUT_DIR/linux/libflutter_rcp_bridge.so" "$ROOT_DIR/linux/bundle/lib/"
+    cp "$OUTPUT_DIR/linux/librcpb.so" "$ROOT_DIR/linux/bundle/lib/"
     
 elif [[ "$OSTYPE" == "msys"* || "$OSTYPE" == "win32" ]]; then
     # Windows
     echo "Building for Windows..."
-    compile_for_target "x86_64-pc-windows-msvc" "flutter_rcp_bridge.dll" "$OUTPUT_DIR/windows"
+    compile_for_target "x86_64-pc-windows-msvc" "rcpb.dll" "$OUTPUT_DIR/windows"
     
     # Copy to project directory for easy access during development
     mkdir -p "$ROOT_DIR/windows/runner/Debug"
     mkdir -p "$ROOT_DIR/windows/runner/Release"
-    cp "$OUTPUT_DIR/windows/flutter_rcp_bridge.dll" "$ROOT_DIR/windows/runner/Debug/"
-    cp "$OUTPUT_DIR/windows/flutter_rcp_bridge.dll" "$ROOT_DIR/windows/runner/Release/"
+    cp "$OUTPUT_DIR/windows/rcpb.dll" "$ROOT_DIR/windows/runner/Debug/"
+    cp "$OUTPUT_DIR/windows/rcpb.dll" "$ROOT_DIR/windows/runner/Release/"
 fi
 
 echo "All builds completed successfully"

@@ -9,7 +9,7 @@ This document explains the configuration options in the `cbindgen.toml` file use
 ## File Location
 
 ```
-flutter_rcp_client/rust_bridge/cbindgen.toml
+rcp_client/rust_bridge/cbindgen.toml
 ```
 
 ## Configuration Sections

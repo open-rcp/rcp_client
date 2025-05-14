@@ -1,4 +1,4 @@
-package com.example.flutter_rcp_client
+package com.example.rcp_client
 
 import io.flutter.embedding.android.FlutterActivity
 

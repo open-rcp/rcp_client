@@ -49,15 +49,15 @@ class NativeLibraryManager {
   /// Get the library name for the current platform
   static String _getLibraryName() {
     if (Platform.isWindows) {
-      return 'flutter_rcp_bridge.dll';
+      return 'rcpb.dll';
     } else if (Platform.isMacOS) {
-      return 'libflutter_rcp_bridge.dylib';
+      return 'librcpb.dylib';
     } else if (Platform.isLinux) {
-      return 'libflutter_rcp_bridge.so';
+      return 'librcpb.so';
     } else if (Platform.isAndroid) {
-      return 'libflutter_rcp_bridge.so';
+      return 'librcpb.so';
     } else if (Platform.isIOS) {
-      return 'flutter_rcp_bridge.framework/flutter_rcp_bridge';
+      return 'rcpb.framework/rcpb';
     } else {
       throw UnsupportedError('Unsupported platform: ${Platform.operatingSystem}');
     }

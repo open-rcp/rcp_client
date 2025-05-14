@@ -13,7 +13,7 @@ This Flutter client uses a dedicated Rust FFI bridge to communicate with the RCP
 ## Project Structure
 
 ```
-flutter_rcp_client/
+rcp_client/
 ├── android/              # Android platform code
 ├── ios/                  # iOS platform code  
 ├── lib/                  # Dart/Flutter code
@@ -45,7 +45,7 @@ flutter_rcp_client/
 1. **Compile the Rust FFI bridge**:
 
    ```bash
-   cd flutter_rcp_client
+   cd rcp_client
    ./build_rust_bridge.sh
    ```
 
@@ -92,7 +92,7 @@ For platform-specific distribution instructions, please refer to the Flutter doc
 ## Dependencies
 
 The Rust bridge only depends on:
-- `rcp-core`
-- `rcp-client`
+- `rcpp`
+- `rcpc`
 
 This ensures the Flutter client remains isolated from implementation details of other components in the RCP ecosystem.

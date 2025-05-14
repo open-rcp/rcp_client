@@ -1,4 +1,4 @@
-name: flutter_rcp_client
+name: rcp_client
 description: "Flutter-based RCP client application for connecting to RCP servers and launching remote applications."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.

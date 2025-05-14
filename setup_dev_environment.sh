@@ -21,18 +21,18 @@ if [ ! -f "$SCRIPT_DIR/rust_bridge/Cargo.toml" ]; then
     echo "Creating Cargo.toml..."
     cat > "$SCRIPT_DIR/rust_bridge/Cargo.toml" << 'EOL'
 [package]
-name = "flutter_rcp_bridge"
+name = "rcpb"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "flutter_rcp_bridge"
+name = "rcpb"
 crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
 # Core dependencies from workspace
-rcp-core = { path = "../../rcp-core" }
-rcp-client = { path = "../../rcp-client" }
+rcpp = { path = "../../rcpp" }
+rcpc = { path = "../../rcpc" }
 
 # FFI support
 ffi = "1.0"
@@ -308,9 +308,9 @@ chmod +x "$SCRIPT_DIR/fix_compilation_issues.sh"
 echo "Updating workspace Cargo.toml..."
 WORKSPACE_CARGO_TOML="$(dirname "$SCRIPT_DIR")/Cargo.toml"
 
-if grep -q "flutter_rcp_client/rust" "$WORKSPACE_CARGO_TOML"; then
+if grep -q "rcp_client/rust" "$WORKSPACE_CARGO_TOML"; then
     # Replace the old rust directory with rust_bridge
-    sed -i.bak 's|"flutter_rcp_client/rust"|"flutter_rcp_client/rust_bridge"|g' "$WORKSPACE_CARGO_TOML"
+    sed -i.bak 's|"rcp_client/rust"|"rcp_client/rust_bridge"|g' "$WORKSPACE_CARGO_TOML"
     rm -f "${WORKSPACE_CARGO_TOML}.bak"
     echo "✅ Updated workspace Cargo.toml"
 fi
