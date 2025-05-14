@@ -9,18 +9,18 @@ class NativeLibrary {
   /// Get the native library name based on platform
   static String get libraryName {
     if (Platform.isWindows) {
-      return 'rcp_flutter_bridge.dll';
+      return 'rcp_bridge.dll';
     } else if (Platform.isMacOS) {
-      return 'librcp_flutter_bridge.dylib';
+      return 'librcp_bridge.dylib';
     } else {
-      return 'librcp_flutter_bridge.so';
+      return 'librcp_bridge.so';
     }
   }
   
   /// Load the dynamic library based on the current platform
   static Future<DynamicLibrary> load() async {
     if (Platform.isAndroid) {
-      return DynamicLibrary.open('librcp_flutter_bridge.so');
+      return DynamicLibrary.open('librcp_bridge.so');
     } else if (Platform.isIOS) {
       return DynamicLibrary.process();
     } else if (Platform.isMacOS) {

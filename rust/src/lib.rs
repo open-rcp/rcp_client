@@ -1,19 +1,24 @@
-use std::ffi::{c_char, CStr, CString};
+/*!
+Bridge module for FFI between Flutter and RCP client
 
-/// Bridge module for FFI between Flutter and RCP client
-/// 
-/// This module provides FFI functions to interact with the RCP client libraries
-/// from the Flutter application through Dart's FFI capabilities.
+This module provides FFI functions to interact with the RCP client libraries
+from the Flutter application through Dart's FFI capabilities.
+*/
+use std::ffi::{c_char, CStr};
 
 // TODO: Add actual imports to RCP client libraries
 // use rcp_client::{ClientBuilder, RcpClient};
 
 #[no_mangle]
-pub extern "C" fn connect_to_server(
+/// # Safety
+/// 
+/// This function expects a valid null-terminated C string pointer for `host`.
+/// Calling with an invalid or null pointer may result in undefined behavior.
+pub unsafe extern "C" fn connect_to_server(
     host: *const c_char,
     port: i32
 ) -> i32 {
-    let host_str = unsafe { 
+    let host_str = { 
         if host.is_null() {
             return -1; // Null pointer error
         }
@@ -38,11 +43,15 @@ pub extern "C" fn connect_to_server(
 }
 
 #[no_mangle]
-pub extern "C" fn authenticate_user(
+/// # Safety
+///
+/// This function expects valid null-terminated C string pointers for `username` and `password`.
+/// Calling with invalid or null pointers may result in undefined behavior.
+pub unsafe extern "C" fn authenticate_user(
     username: *const c_char,
     password: *const c_char
 ) -> i32 {
-    let username_str = unsafe { 
+    let username_str = { 
         if username.is_null() {
             return -1; // Null pointer error
         }
@@ -52,7 +61,8 @@ pub extern "C" fn authenticate_user(
         }
     };
     
-    let password_str = unsafe { 
+    // Check password but unused for now
+    let _password_str = { 
         if password.is_null() {
             return -3; // Null pointer error
         }
@@ -70,7 +80,11 @@ pub extern "C" fn authenticate_user(
 }
 
 #[no_mangle]
-pub extern "C" fn get_available_apps(
+/// # Safety
+///
+/// This function expects a valid mutable pointer to an i32 for `count`.
+/// Calling with an invalid or null pointer may result in undefined behavior.
+pub unsafe extern "C" fn get_available_apps(
     count: *mut i32
 ) -> *mut *mut c_char {
     // This is a placeholder for app listing functionality
@@ -79,18 +93,21 @@ pub extern "C" fn get_available_apps(
     // 2. Convert to C-compatible strings
     // 3. Return a pointer to an array of string pointers
     
-    unsafe {
-        *count = 0; // No apps yet
-    }
+    // Set count to 0 as we don't have any apps yet
+    *count = 0;
     
     std::ptr::null_mut()
 }
 
 #[no_mangle]
-pub extern "C" fn launch_app(
+/// # Safety
+///
+/// This function expects a valid null-terminated C string pointer for `app_id`.
+/// Calling with an invalid or null pointer may result in undefined behavior.
+pub unsafe extern "C" fn launch_app(
     app_id: *const c_char
 ) -> i32 {
-    let app_id_str = unsafe { 
+    let app_id_str = { 
         if app_id.is_null() {
             return -1; // Null pointer error
         }

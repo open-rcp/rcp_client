@@ -3,5 +3,5 @@
 version = 4
 
 [[package]]
-name = "rcp_flutter_bridge"
+name = "rcp_bridge"
 version = "0.1.0"

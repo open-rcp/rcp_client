@@ -51,13 +51,13 @@ String _getPlatform() {
 String _getLibraryName(String platform) {
   switch (platform) {
     case 'windows':
-      return 'rcp_flutter_bridge.dll';
+      return 'rcp_bridge.dll';
     case 'macos':
-      return 'librcp_flutter_bridge.dylib';
+      return 'librcp_bridge.dylib';
     case 'linux':
     case 'android':
     case 'ios':
-      return 'librcp_flutter_bridge.so';
+      return 'librcp_bridge.so';
     default:
       throw UnsupportedError('Unsupported platform: $platform');
   }

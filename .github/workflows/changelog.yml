@@ -137,21 +137,29 @@ jobs:
             echo "" >> CHANGELOG.md
             cat temp_changelog.md >> CHANGELOG.md
           fi
+          
+          # Clean up the temporary file
+          rm -f temp_changelog.md
       
       - name: Create Pull Request or Commit Directly
         run: |
-          if [ "${{ github.event_name }}" = "push" ]; then
-            # In autonomous mode, commit directly to the branch
-            git add CHANGELOG.md
-            git commit -m "docs: update changelog for ${{ steps.version.outputs.version }}"
-            git push
-          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            # For manual triggers, create a PR
-            git checkout -b "changelog-${{ steps.version.outputs.version }}"
-            git add CHANGELOG.md
-            git commit -m "docs: update changelog for ${{ steps.version.outputs.version }}"
-            git push --set-upstream origin "changelog-${{ steps.version.outputs.version }}"
-            gh pr create --title "Update CHANGELOG for ${{ steps.version.outputs.version }}" --body "Automatically generated changelog for ${{ steps.version.outputs.version }}" --label "documentation"
+          # Check if there are any changes to commit
+          if git diff --quiet CHANGELOG.md; then
+            echo "No changes to CHANGELOG.md, skipping commit"
+          else
+            if [ "${{ github.event_name }}" = "push" ]; then
+              # In autonomous mode, commit directly to the branch
+              git add CHANGELOG.md
+              git commit -m "docs: update changelog for ${{ steps.version.outputs.version }}"
+              git push
+            elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              # For manual triggers, create a PR
+              git checkout -b "changelog-${{ steps.version.outputs.version }}"
+              git add CHANGELOG.md
+              git commit -m "docs: update changelog for ${{ steps.version.outputs.version }}"
+              git push --set-upstream origin "changelog-${{ steps.version.outputs.version }}"
+              gh pr create --title "Update CHANGELOG for ${{ steps.version.outputs.version }}" --body "Automatically generated changelog for ${{ steps.version.outputs.version }}" --label "documentation" || echo "Failed to create PR, but changes were pushed to branch"
+            fi
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

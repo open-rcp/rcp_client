@@ -37,8 +37,8 @@ If you encounter a "Failed to initialize RCP service: Exception: Could not find 
    ```bash
    # For macOS:
    mkdir -p macos/Runner/Frameworks
-   cp rust/target/release/librcp_flutter_bridge.dylib macos/Runner/Frameworks/
-   install_name_tool -id "@executable_path/../Frameworks/librcp_flutter_bridge.dylib" macos/Runner/Frameworks/librcp_flutter_bridge.dylib
+   cp rust/target/release/librcp_bridge.dylib macos/Runner/Frameworks/
+   install_name_tool -id "@executable_path/../Frameworks/librcp_bridge.dylib" macos/Runner/Frameworks/librcp_bridge.dylib
    ```
 
 3. Check that the library paths in `lib/utils/native_library.dart` include the correct location for your development environment.

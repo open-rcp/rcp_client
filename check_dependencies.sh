@@ -39,11 +39,11 @@ fi
 echo -n "Checking Rust RCP Bridge library... "
 RUST_LIB_PATH="rust/target/release"
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    RUST_LIB_FILE="$RUST_LIB_PATH/librcp_flutter_bridge.dylib"
+    RUST_LIB_FILE="$RUST_LIB_PATH/librcp_bridge.dylib"
 elif [[ "$OSTYPE" == "linux"* ]]; then
-    RUST_LIB_FILE="$RUST_LIB_PATH/librcp_flutter_bridge.so"
+    RUST_LIB_FILE="$RUST_LIB_PATH/librcp_bridge.so"
 elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
-    RUST_LIB_FILE="$RUST_LIB_PATH/rcp_flutter_bridge.dll"
+    RUST_LIB_FILE="$RUST_LIB_PATH/rcp_bridge.dll"
 else
     echo "✗ Unknown OS type: $OSTYPE"
     exit 1
@@ -82,7 +82,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     
     # Check if library is copied to Frameworks directory
     echo -n "Checking if Rust library is copied to Frameworks... "
-    FRAMEWORK_LIB="$FRAMEWORKS_DIR/librcp_flutter_bridge.dylib"
+    FRAMEWORK_LIB="$FRAMEWORKS_DIR/librcp_bridge.dylib"
     if [ -f "$FRAMEWORK_LIB" ]; then
         echo "✓ Found at $FRAMEWORK_LIB"
     else

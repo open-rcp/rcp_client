@@ -1,5 +1,5 @@
 [package]
-name = "rcp_flutter_bridge"
+name = "rcp_bridge"
 version = "0.1.0"
 edition = "2021"
 authors = ["RCP Team"]
@@ -8,7 +8,7 @@ repository = "https://github.com/open-rcp/rcp"
 homepage = "https://github.com/open-rcp/rcp"
 
 [lib]
-name = "rcp_flutter_bridge"
+name = "rcp_bridge"
 crate-type = ["cdylib"]
 
 [dependencies]
