@@ -1,0 +1,168 @@
+name: Changelog Preparation
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+    types: [closed]
+    branches:
+      - master
+      - main
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Version to prepare changelog for (e.g., v0.2.0)'
+        required: true
+
+jobs:
+  update_changelog:
+    if: github.event_name == 'push' || github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup git user
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+      
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.release_version }}" >> $GITHUB_OUTPUT
+          else
+            # Try to detect version from git tags first (for autonomous releases)
+            latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+            if [[ "$latest_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+              echo "version=$latest_tag" >> $GITHUB_OUTPUT
+            else
+              # Fallback to pubspec.yaml
+              echo "version=v$(grep -m 1 'version:' pubspec.yaml | sed 's/.*version: *\([0-9][0-9\.]*\).*/\1/')" >> $GITHUB_OUTPUT
+            fi
+          fi
+          echo "Using version: ${{ steps.version.outputs.version }}"
+      
+      - name: Determine previous tag
+        id: prev_tag
+        run: |
+          prev_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$prev_tag" ]; then
+            echo "prev_tag=HEAD~100" >> $GITHUB_OUTPUT
+            echo "No previous tag found, using earliest commits"
+          else
+            echo "prev_tag=$prev_tag" >> $GITHUB_OUTPUT
+            echo "Previous tag: $prev_tag"
+          fi
+      
+      - name: Generate changelog entry
+        id: changelog
+        run: |
+          echo "## [${{ steps.version.outputs.version }}] - $(date '+%Y-%m-%d')" > temp_changelog.md
+          echo "" >> temp_changelog.md
+          
+          # Features
+          echo "### Added" >> temp_changelog.md
+          git log ${{ steps.prev_tag.outputs.prev_tag }}..HEAD --pretty=format:"- %s" --grep="^feat\|^add" | grep -v "^$" | sort >> temp_changelog.md || echo "- No new features in this release" >> temp_changelog.md
+          echo "" >> temp_changelog.md
+          
+          # Bug fixes
+          echo "### Fixed" >> temp_changelog.md
+          git log ${{ steps.prev_tag.outputs.prev_tag }}..HEAD --pretty=format:"- %s" --grep="^fix" | grep -v "^$" | sort >> temp_changelog.md || echo "- No bug fixes in this release" >> temp_changelog.md
+          echo "" >> temp_changelog.md
+          
+          # Improvements
+          echo "### Changed" >> temp_changelog.md
+          git log ${{ steps.prev_tag.outputs.prev_tag }}..HEAD --pretty=format:"- %s" --grep="^improve\|^refactor\|^perf\|^change" | grep -v "^$" | sort >> temp_changelog.md || echo "- No changes in this release" >> temp_changelog.md
+          echo "" >> temp_changelog.md
+          
+          # Removals
+          echo "### Removed" >> temp_changelog.md
+          git log ${{ steps.prev_tag.outputs.prev_tag }}..HEAD --pretty=format:"- %s" --grep="^remove\|^deprecate" | grep -v "^$" | sort >> temp_changelog.md || echo "- No removals in this release" >> temp_changelog.md
+          echo "" >> temp_changelog.md
+          
+          # Security
+          echo "### Security" >> temp_changelog.md
+          git log ${{ steps.prev_tag.outputs.prev_tag }}..HEAD --pretty=format:"- %s" --grep="^security" | grep -v "^$" | sort >> temp_changelog.md || echo "- No security updates in this release" >> temp_changelog.md
+          echo "" >> temp_changelog.md
+          
+          # Documentation changes
+          echo "### Documentation" >> temp_changelog.md
+          git log ${{ steps.prev_tag.outputs.prev_tag }}..HEAD --pretty=format:"- %s" --grep="^docs" | grep -v "^$" | sort >> temp_changelog.md || echo "- No documentation changes in this release" >> temp_changelog.md
+          
+          cat temp_changelog.md
+      
+      - name: Update CHANGELOG.md
+        run: |
+          if [ -f CHANGELOG.md ]; then
+            # Get everything after the first release heading (## [x.y.z])
+            existing_content=$(awk '/## \[[0-9]+\.[0-9]+\.[0-9]+\]/{flag=1} flag{print}' CHANGELOG.md)
+            
+            # Create new changelog with current format/header and new entry
+            echo "# Changelog" > new_changelog.md
+            echo "" >> new_changelog.md
+            echo "All notable changes to the RCP Client Flutter application will be documented in this file." >> new_changelog.md
+            echo "" >> new_changelog.md
+            echo "The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)," >> new_changelog.md
+            echo "and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)." >> new_changelog.md
+            echo "" >> new_changelog.md
+            echo "## [Unreleased]" >> new_changelog.md
+            echo "" >> new_changelog.md
+            cat temp_changelog.md >> new_changelog.md
+            echo "" >> new_changelog.md
+            
+            if [ -n "$existing_content" ]; then
+              echo "$existing_content" >> new_changelog.md
+            fi
+            
+            mv new_changelog.md CHANGELOG.md
+          else
+            echo "# Changelog" > CHANGELOG.md
+            echo "" >> CHANGELOG.md
+            echo "All notable changes to the RCP Client Flutter application will be documented in this file." >> CHANGELOG.md
+            echo "" >> CHANGELOG.md
+            echo "The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)," >> CHANGELOG.md
+            echo "and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)." >> CHANGELOG.md
+            echo "" >> CHANGELOG.md
+            echo "## [Unreleased]" >> CHANGELOG.md
+            echo "" >> CHANGELOG.md
+            cat temp_changelog.md >> CHANGELOG.md
+          fi
+      
+      - name: Create Pull Request or Commit Directly
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            # In autonomous mode, commit directly to the branch
+            git add CHANGELOG.md
+            git commit -m "docs: update changelog for ${{ steps.version.outputs.version }}"
+            git push
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # For manual triggers, create a PR
+            git checkout -b "changelog-${{ steps.version.outputs.version }}"
+            git add CHANGELOG.md
+            git commit -m "docs: update changelog for ${{ steps.version.outputs.version }}"
+            git push --set-upstream origin "changelog-${{ steps.version.outputs.version }}"
+            gh pr create --title "Update CHANGELOG for ${{ steps.version.outputs.version }}" --body "Automatically generated changelog for ${{ steps.version.outputs.version }}" --label "documentation"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Create Pull Request (fallback)
+        if: github.event_name == 'workflow_dispatch' && failure()
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "docs: update changelog for ${{ steps.version.outputs.version }}"
+          title: "Update CHANGELOG for ${{ steps.version.outputs.version }}"
+          body: "Automatically generated changelog for ${{ steps.version.outputs.version }}"
+          branch: "changelog-${{ steps.version.outputs.version }}"
+          labels: "documentation"

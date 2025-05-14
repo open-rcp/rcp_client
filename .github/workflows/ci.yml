@@ -1,0 +1,155 @@
+name: CI
+
+on:
+  push:
+    branches: [ "master", "main" ]
+  pull_request:
+    branches: [ "master", "main" ]
+
+jobs:
+  flutter_test:
+    name: Run Flutter Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'
+          channel: 'stable'
+          cache: true
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Run analyzer
+        run: flutter analyze
+      
+      - name: Run tests
+        run: flutter test
+
+  build_rust_bridge:
+    name: Build Rust Bridge
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "rust -> target"
+      
+      - name: Run clippy with warnings as errors
+        working-directory: ./rust
+        run: cargo clippy --all-targets --all-features -- -D warnings
+      
+      - name: Check formatting
+        working-directory: ./rust
+        run: cargo fmt --all -- --check
+      
+      - name: Build rust bridge
+        run: ./build_rust_bridge.sh
+
+  build_android:
+    name: Build Android APK
+    needs: [flutter_test, build_rust_bridge]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'
+          channel: 'stable'
+          cache: true
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: armv7-linux-androideabi, aarch64-linux-android, i686-linux-android, x86_64-linux-android
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Build APK
+        run: flutter build apk --release
+      
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: app-release
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+  build_ios:
+    name: Build iOS IPA
+    needs: [flutter_test, build_rust_bridge]
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'
+          channel: 'stable'
+          cache: true
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios, x86_64-apple-ios
+      
+      - name: Install dependencies
+        run: |
+          flutter pub get
+          cd ios && pod install
+      
+      - name: Build iOS
+        run: flutter build ios --release --no-codesign
+
+  build_macos:
+    name: Build macOS App
+    needs: [flutter_test, build_rust_bridge]
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'
+          channel: 'stable'
+          cache: true
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Build macOS App
+        run: flutter build macos --release
+      
+      - name: Create macOS App Bundle
+        run: ./build_macos.sh
+      
+      - name: Upload macOS App
+        uses: actions/upload-artifact@v3
+        with:
+          name: macos-app
+          path: build/macos/Build/Products/Release/rcp_client.app
