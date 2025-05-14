@@ -48,7 +48,7 @@ class AppCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     
                     // App description
                     if (app.description != null) ...[
@@ -63,7 +63,6 @@ class AppCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const SizedBox(height: 4),
                     ],
                     
                     // App metadata

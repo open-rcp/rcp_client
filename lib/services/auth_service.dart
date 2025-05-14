@@ -26,79 +26,99 @@ class AuthService {
   /// Login to the RCP server
   Future<User> login(String username, String password, {bool rememberMe = false}) async {
     try {
-      // Use RCP service to authenticate
-      final success = await _rcpService.authenticate(username, password);
-      
-      if (success) {
-        // For now, create a basic user object
-        _currentUser = User(
-          id: username,  // Using username as ID temporarily
-          username: username,
-          displayName: username.split('@').first, // Simple display name
-          token: _generateMockToken(username),
-          rememberMe: rememberMe,
-        );
-        
-        // Store credentials if remember me is enabled
-        if (rememberMe) {
-          await _saveCredentials(username, password);
-        }
-        
-        return _currentUser;
-      } else {
-        throw Exception('Authentication failed');
+      // Connect to server first if not already connected
+      if (!_rcpService.isConnected) {
+        throw Exception('Not connected to server. Please connect first.');
       }
+      
+      // Use RCP service to authenticate
+      final userData = await _rcpService.authenticate(username, password);
+      
+      // Create user from authentication response
+      final user = User(
+        id: userData['id'] as String? ?? userData['username'] as String,
+        username: userData['username'] as String,
+        displayName: userData['displayName'] as String?,
+        email: userData['email'] as String?,
+      );
+      
+      _currentUser = user;
+      
+      // Store credentials if remember me is enabled
+      if (rememberMe) {
+        await _storeCredentials(username, password);
+      }
+      
+      return user;
     } catch (e) {
-      throw Exception('Login error: $e');
+      rethrow;
     }
+  }
+  
+  /// Get stored credentials
+  Future<Map<String, String>?> getSavedCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    final encodedCredentials = prefs.getString('credentials');
+    if (encodedCredentials == null) return null;
+    
+    try {
+      final credentialsJson = jsonDecode(encodedCredentials);
+      return {
+        'username': credentialsJson['username'] as String,
+        'password': credentialsJson['password'] as String,
+      };
+    } catch (e) {
+      await prefs.remove('credentials');
+      return null;
+    }
+  }
+  
+  /// Check if stored credentials exist and try to authenticate with them
+  Future<User?> checkStoredCredentials() async {
+    final credentials = await getSavedCredentials();
+    if (credentials == null) return null;
+    
+    try {
+      return await login(
+        credentials['username']!,
+        credentials['password']!,
+        rememberMe: true,
+      );
+    } catch (e) {
+      print('Auto-login failed: $e');
+      await clearCredentials();
+      return null;
+    }
+  }
+  
+  /// Store credentials for auto-login
+  Future<void> _storeCredentials(String username, String password) async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    final credentials = {
+      'username': username,
+      'password': password,
+    };
+    
+    await prefs.setString('credentials', jsonEncode(credentials));
+  }
+  
+  /// Clear stored credentials
+  Future<void> clearCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('credentials');
   }
   
   /// Logout the current user
   Future<void> logout() async {
-    _currentUser = User.guest();
-    
-    // Clear remembered credentials if they exist
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('auth_username');
-    await prefs.remove('auth_password');
-    await prefs.remove('auth_token');
-  }
-  
-  /// Check for stored credentials and auto-login if available
-  Future<User?> checkStoredCredentials() async {
-    final prefs = await SharedPreferences.getInstance();
-    
-    final String? username = prefs.getString('auth_username');
-    final String? password = prefs.getString('auth_password');
-    final String? token = prefs.getString('auth_token');
-    
-    // If we have stored credentials, try to use them
-    if (username != null && password != null) {
-      try {
-        return await login(username, password, rememberMe: true);
-      } catch (e) {
-        // If auto-login fails, clear stored credentials
-        await logout();
-        return null;
-      }
+    try {
+      await _rcpService.logout();
+    } catch (e) {
+      // Ignore errors during logout
+      print('Error during logout: $e');
+    } finally {
+      _currentUser = User.guest();
     }
-    
-    // No stored credentials or they were invalid
-    return null;
-  }
-  
-  /// Save user credentials for auto-login
-  Future<void> _saveCredentials(String username, String password) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('auth_username', username);
-    await prefs.setString('auth_password', password);
-    await prefs.setString('auth_token', _currentUser.token ?? '');
-  }
-  
-  /// Generate a mock authentication token (for testing)
-  String _generateMockToken(String username) {
-    final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
-    final data = '$username:$timestamp';
-    return base64Encode(utf8.encode(data));
   }
 }

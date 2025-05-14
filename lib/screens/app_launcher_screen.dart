@@ -119,7 +119,7 @@ class _AppLauncherScreenState extends State<AppLauncherScreen> {
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Available Applications'),
+        title: const Text('Applications'),
         automaticallyImplyLeading: false,
         actions: [
           // Refresh button

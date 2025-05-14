@@ -1,10 +1,10 @@
 # Flutter RCP Client
 
-A cross-platform client for the Remote Computing Protocol (RCP) system, built using Flutter and Rust.
+A cross-platform client for the Remote Computing Protocol (RCP) system, built using Flutter and Rust with a dependency-free architecture.
 
 ## Overview
 
-The Flutter RCP Client is designed to replace the current SDL2/egui-based client with a more modern, cross-platform solution. It leverages Flutter's UI capabilities while integrating with the existing Rust-based RCP client libraries through Foreign Function Interface (FFI).
+The Flutter RCP Client is designed to provide a modern, cross-platform solution for connecting to RCP servers. It leverages Flutter's UI capabilities while integrating with the Rust-based RCP client libraries through a dedicated Foreign Function Interface (FFI) bridge, ensuring clean separation of concerns and minimizing dependencies.
 
 ## Features
 
@@ -81,6 +81,17 @@ If you encounter CocoaPods-related errors when building for macOS or iOS:
 - For Windows: Visual Studio with C++ build tools
 - For Linux: Appropriate development packages
 
+## Architecture
+
+The Flutter RCP Client uses a clean architecture with a dedicated Rust FFI bridge:
+
+1. **Flutter UI Layer** - Dart code for the user interface
+2. **Service Layer** - Dart services that communicate with the Rust bridge
+3. **FFI Bridge** - A dedicated Rust crate that exposes a clean API for the Flutter app
+4. **RCP Core** - Core RCP functionality provided by Rust libraries
+
+This architecture ensures the Flutter client remains dependency-free from other Rust projects except through the dedicated bridge.
+
 ## Project Structure
 
 ```
@@ -88,12 +99,15 @@ flutter_rcp_client/
 ├── lib/                 # Dart/Flutter code
 │   ├── models/          # Data models
 │   ├── screens/         # UI screens
-│   ├── services/        # Business logic
+│   ├── services/        # Business logic and FFI bindings
 │   ├── utils/           # Utilities
 │   └── widgets/         # Reusable widgets
-├── rust/                # Rust FFI bridge
+├── rust_bridge/         # Rust FFI bridge (new architecture)
 │   ├── src/             # Rust source code
-│   └── Cargo.toml       # Rust dependencies
+│   ├── Cargo.toml       # Rust dependencies
+│   └── cbindgen.toml    # C binding configuration
+├── build_rust_bridge.sh # Script to build the Rust bridge
+├── copy_native_libs.sh  # Script to copy native libraries
 └── [platform folders]   # Platform-specific code
 ```
 
@@ -107,25 +121,34 @@ Run the dependency check script to ensure all required components are installed:
 ./check_dependencies.sh
 ```
 
-### 2. Build the Rust Library
+### 2. Build the Rust Bridge
 
-Build the Rust FFI bridge library:
+Build the Rust FFI bridge library for your platform:
 
-```bash
-cd rust
-cargo build --release
-cd ..
+```zsh
+chmod +x build_rust_bridge.sh
+./build_rust_bridge.sh
 ```
 
 ### 3. Copy Native Libraries
 
-For macOS:
+Copy the native libraries to platform-specific locations:
 
-```bash
-./copy_macos_libs.sh
+```zsh
+chmod +x copy_native_libs.sh
+./copy_native_libs.sh
 ```
 
-For other platforms, see the platform-specific instructions below.
+### 4. Migrate to New Architecture (Optional)
+
+To update from the previous architecture to the dependency-free architecture:
+
+```zsh
+chmod +x migrate.sh
+./migrate.sh
+```
+
+This script backs up your files, makes necessary changes, and handles the migration process.
 
 ### 4. Run the Application
 
@@ -137,43 +160,55 @@ flutter run
 
 ### macOS
 
-Ensure the Rust library is copied to the appropriate location:
+For macOS, the library is automatically placed in the correct location by the `copy_native_libs.sh` script. If you need to manually place it:
 
-```bash
-mkdir -p macos/Runner/Frameworks
-cp rust/target/release/librcp_flutter_bridge.dylib macos/Runner/Frameworks/
+```zsh
+mkdir -p macos/Frameworks
+cp build/native_assets/macos/libflutter_rcp_bridge.dylib macos/Frameworks/
 ```
 
 ### iOS
 
-The native library needs to be integrated as an iOS framework:
+For iOS, the static library is embedded during the build process:
 
-```bash
+```zsh
 mkdir -p ios/Frameworks
-cp rust/target/release/librcp_flutter_bridge.a ios/Frameworks/
+cp build/native_assets/ios/libflutter_rcp_bridge.a ios/Frameworks/
 ```
 
 ### Android
 
-For Android, the native library needs to be placed in the appropriate directories for each architecture:
+The `copy_native_libs.sh` script handles copying libraries for all architectures:
 
-```bash
-mkdir -p android/app/src/main/jniLibs/arm64-v8a
-cp rust/target/aarch64-linux-android/release/librcp_flutter_bridge.so android/app/src/main/jniLibs/arm64-v8a/
+```zsh
+# Libraries are automatically copied to:
+# android/app/src/main/jniLibs/arm64-v8a/
+# android/app/src/main/jniLibs/armeabi-v7a/
+# android/app/src/main/jniLibs/x86_64/
 ```
-
-Repeat for other architectures (armeabi-v7a, x86, x86_64) as needed.
 
 ### Windows and Linux
 
-Native libraries are typically loaded from the application's directory or a standard system location.
+The script handles platform-specific paths for Windows (.dll) and Linux (.so) libraries as well.
 
 ## Development Notes
 
-- FFI bindings connect Flutter to the Rust RCP client libraries
-- The application uses Provider for state management
-- Use `flutter pub get` to update dependencies
-- The `lib/utils/native_library.dart` helper handles platform-specific library loading
+- The application uses a clean FFI bridge architecture that isolates the Flutter app from direct Rust dependencies
+- Provider is used for state management throughout the application
+- Use `flutter pub get` to update Flutter dependencies
+- The `lib/services/rcp_bridge.dart` class handles FFI communication with the Rust code
+- The `lib/utils/native_library_manager.dart` utility handles platform-specific library loading
+- After changing Rust code, rebuild with `./build_rust_bridge.sh`
+
+## Documentation
+
+Additional documentation is available:
+
+- [FFI_BRIDGE_DOCS.md](FFI_BRIDGE_DOCS.md) - Detailed documentation on the FFI bridge architecture
+- [INTEGRATION.md](INTEGRATION.md) - Overview of the dependency-free integration approach
+- [MIGRATION_PLAN.md](MIGRATION_PLAN.md) - Plan for migrating to the new architecture
+- [NATIVE_LIBRARY_SETUP.md](NATIVE_LIBRARY_SETUP.md) - Instructions for setting up native libraries
+- [rust_bridge/CBINDGEN_CONFIG_DOCS.md](rust_bridge/CBINDGEN_CONFIG_DOCS.md) - Documentation for cbindgen configuration
 
 ## Troubleshooting
 

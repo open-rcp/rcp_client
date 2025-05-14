@@ -17,9 +17,8 @@ class AppTheme {
   /// Error color
   static const Color errorColor = Color(0xFFB71C1C);
   
-  /// Get light theme data
-  static ThemeData getLightTheme() {
-    return ThemeData(
+  /// Light theme
+  static ThemeData get lightTheme => ThemeData(
       colorScheme: ColorScheme.fromSeed(
         seedColor: primaryColor,
         secondary: secondaryColor,
@@ -56,11 +55,9 @@ class AppTheme {
         ),
       ),
     );
-  }
 
-  /// Get dark theme data
-  static ThemeData getDarkTheme() {
-    return ThemeData(
+  /// Dark theme
+  static ThemeData get darkTheme => ThemeData(
       colorScheme: ColorScheme.fromSeed(
         seedColor: primaryColor,
         secondary: secondaryColor,
@@ -101,5 +98,4 @@ class AppTheme {
         ),
       ),
     );
-  }
 }

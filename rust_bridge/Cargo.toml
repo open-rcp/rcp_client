@@ -1,0 +1,25 @@
+[package]
+name = "flutter_rcp_bridge"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "flutter_rcp_bridge"
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+# Core dependencies from workspace
+rcp-core = { path = "../../rcp-core" }
+rcp-client = { path = "../../rcp-client" }
+
+# FFI support
+ffi = "0.1.1"
+
+# Only include necessary dependencies
+tokio = { version = "1.35", features = ["rt"] }
+anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[build-dependencies]
+cbindgen = "0.26"
