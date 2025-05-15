@@ -42,7 +42,7 @@ fn create_success_result(data: &str) -> RcpResult {
         Ok(s) => s.into_raw(),
         Err(_) => ptr::null_mut(),
     };
-    
+
     RcpResult {
         success: true,
         error_message: ptr::null_mut(),
@@ -55,7 +55,7 @@ fn create_error_result(error: &str) -> RcpResult {
         Ok(s) => s.into_raw(),
         Err(_) => ptr::null_mut(),
     };
-    
+
     RcpResult {
         success: false,
         error_message: c_error,
@@ -72,7 +72,7 @@ fn create_error_result(error: &str) -> RcpResult {
 pub unsafe extern "C" fn rcp_connect_to_server(
     host: *const c_char,
     port: i32,
-    timeout_ms: i32
+    timeout_ms: i32,
 ) -> RcpResult {
     // Validate inputs
     if host.is_null() {
@@ -86,7 +86,10 @@ pub unsafe extern "C" fn rcp_connect_to_server(
     };
 
     // TODO: Implement actual connection logic using RCP libraries
-    println!("Connecting to {}:{} (timeout: {}ms)", host_str, port, timeout_ms);
+    println!(
+        "Connecting to {}:{} (timeout: {}ms)",
+        host_str, port, timeout_ms
+    );
 
     // For now, simulate a successful connection
     create_success_result("{\"connectionId\":\"mock-123\",\"serverVersion\":\"1.0.0\"}")
@@ -99,7 +102,7 @@ pub unsafe extern "C" fn rcp_connect_to_server(
 pub unsafe extern "C" fn rcp_authenticate(
     connection_id: *const c_char,
     username: *const c_char,
-    password: *const c_char
+    password: *const c_char,
 ) -> RcpResult {
     // Validate inputs
     if connection_id.is_null() || username.is_null() || password.is_null() {
@@ -111,7 +114,7 @@ pub unsafe extern "C" fn rcp_authenticate(
         Ok(s) => s,
         Err(_) => return create_error_result("Invalid UTF-8 in connection ID"),
     };
-    
+
     let username_str = match CStr::from_ptr(username).to_str() {
         Ok(s) => s,
         Err(_) => return create_error_result("Invalid UTF-8 in username"),
@@ -124,19 +127,22 @@ pub unsafe extern "C" fn rcp_authenticate(
     };
 
     // TODO: Implement actual authentication logic
-    println!("Authenticating user {} on connection {}", username_str, connection_id_str);
+    println!(
+        "Authenticating user {} on connection {}",
+        username_str, connection_id_str
+    );
 
     // Simulate successful authentication
-    create_success_result("{\"sessionId\":\"sess-456\",\"userId\":\"user-789\",\"tokenExpiry\":3600}")
+    create_success_result(
+        "{\"sessionId\":\"sess-456\",\"userId\":\"user-789\",\"tokenExpiry\":3600}",
+    )
 }
 
 /// # Safety
 ///
 /// This function expects a valid null-terminated C string pointer.
 #[no_mangle]
-pub unsafe extern "C" fn rcp_get_available_apps(
-    session_id: *const c_char
-) -> RcpResult {
+pub unsafe extern "C" fn rcp_get_available_apps(session_id: *const c_char) -> RcpResult {
     // Validate input
     if session_id.is_null() {
         return create_error_result("Session ID cannot be null");
@@ -167,7 +173,7 @@ pub unsafe extern "C" fn rcp_get_available_apps(
 #[no_mangle]
 pub unsafe extern "C" fn rcp_launch_app(
     session_id: *const c_char,
-    app_id: *const c_char
+    app_id: *const c_char,
 ) -> RcpResult {
     // Validate inputs
     if session_id.is_null() || app_id.is_null() {
@@ -179,17 +185,22 @@ pub unsafe extern "C" fn rcp_launch_app(
         Ok(s) => s,
         Err(_) => return create_error_result("Invalid UTF-8 in session ID"),
     };
-    
+
     let app_id_str = match CStr::from_ptr(app_id).to_str() {
         Ok(s) => s,
         Err(_) => return create_error_result("Invalid UTF-8 in app ID"),
     };
 
     // TODO: Implement actual app launching logic
-    println!("Launching app {} for session {}", app_id_str, session_id_str);
+    println!(
+        "Launching app {} for session {}",
+        app_id_str, session_id_str
+    );
 
     // Simulate successful app launch
-    create_success_result("{\"launchId\":\"launch-101\",\"displayUrl\":\"ws://server/display/101\"}")
+    create_success_result(
+        "{\"launchId\":\"launch-101\",\"displayUrl\":\"ws://server/display/101\"}",
+    )
 }
 
 /// # Safety
@@ -201,15 +212,15 @@ pub unsafe extern "C" fn rcp_free_result(result: *mut RcpResult) {
     if result.is_null() {
         return;
     }
-    
+
     let result_ref = &mut *result;
-    
+
     // Free the error message if it exists
     if !result_ref.error_message.is_null() {
         let _ = CString::from_raw(result_ref.error_message);
         result_ref.error_message = ptr::null_mut();
     }
-    
+
     // Free the data if it exists
     if !result_ref.data.is_null() {
         let _ = CString::from_raw(result_ref.data);
