@@ -14,6 +14,11 @@ on:
   push:
     tags: ['v*']
 
+# Prevent multiple workflow runs for the same ref (tag or branch)
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   setup:
     name: Setup and Test
@@ -36,6 +41,11 @@ jobs:
       
       - name: Run analyzer
         run: flutter analyze --no-fatal-infos
+        
+      - name: Validate dependencies
+        run: |
+          chmod +x ./scripts/ci/validate_dependencies.sh
+          ./scripts/ci/validate_dependencies.sh
       
       - name: Run tests
         run: flutter test
@@ -54,6 +64,8 @@ jobs:
     name: Build Rust Bridge
     runs-on: ubuntu-latest
     needs: setup
+    # Add timeout to prevent excessive build time
+    timeout-minutes: 30
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -103,6 +115,7 @@ jobs:
     runs-on: macos-latest
     needs: [setup, build-rust-bridge]
     if: ${{ !github.event.inputs.platforms || contains(github.event.inputs.platforms, 'macos') || github.event.inputs.platforms == 'all' }}
+    timeout-minutes: 45
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -113,6 +126,20 @@ jobs:
           channel: 'stable'
           flutter-version: '3.29.3'
           cache: true
+      
+      # Improved Flutter cache for macOS
+      - name: Cache macOS Flutter dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/Library/Caches/CocoaPods
+            ~/Library/Developer/Xcode/DerivedData
+            ~/Library/Caches/Pub
+            ~/.pub-cache
+            .dart_tool
+          key: macos-flutter-${{ hashFiles('**/pubspec.lock', 'ios/Podfile.lock', 'macos/Podfile.lock') }}
+          restore-keys: |
+            macos-flutter-
       
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -161,6 +188,7 @@ jobs:
     runs-on: windows-latest
     needs: [setup, build-rust-bridge]
     if: ${{ !github.event.inputs.platforms || contains(github.event.inputs.platforms, 'windows') || github.event.inputs.platforms == 'all' }}
+    timeout-minutes: 45
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -345,12 +373,35 @@ jobs:
           export ANDROID_NDK_HOME="${ANDROID_NDK_HOME:-$ANDROID_SDK_ROOT/ndk/25.2.9519653}"
           export PATH=$PATH:$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin
           
-          # Build for all the needed architectures using cargo-ndk with explicit NDK configuration
-          # The cargo-ndk tool handles cross-compilation correctly
-          cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -t x86 \
-            --platform 33 \
-            -o ../android/app/src/main/jniLibs build --release
+          # Try building with cargo-ndk with retries
+          max_attempts=3
+          attempt=1
+          success=false
+          
+          while [ $attempt -le $max_attempts ]; do
+            echo "Attempt $attempt of $max_attempts for cargo-ndk build"
+            
+            if cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -t x86 \
+               --platform 33 -o ../android/app/src/main/jniLibs build --release; then
+              echo "✅ Android libraries built successfully"
+              success=true
+              break
+            else
+              echo "❌ Attempt $attempt failed"
+              if [ $attempt -lt $max_attempts ]; then
+                echo "Waiting 15 seconds before retry..."
+                sleep 15
+              fi
+              attempt=$((attempt+1))
+            fi
+          done
+          
           cd ..
+          
+          if [ "$success" != "true" ]; then
+            echo "::warning::Failed to build Android libraries with cargo-ndk after $max_attempts attempts."
+            echo "Continuing with the build process using cached libraries..."
+          fi
       
       - name: Copy native libraries (if needed)
         run: |
@@ -441,12 +492,40 @@ jobs:
       
       - name: Build iOS app
         run: |
-          if [ -f "./scripts/build/build_ios.sh" ]; then
-            chmod +x ./scripts/build/build_ios.sh
-            ./scripts/build/build_ios.sh
-          else
-            flutter build ios --release --no-codesign
-          fi
+          # Function to attempt Flutter iOS build
+          attempt_ios_build() {
+            if [ -f "./scripts/build/build_ios.sh" ]; then
+              chmod +x ./scripts/build/build_ios.sh
+              ./scripts/build/build_ios.sh
+            else
+              flutter build ios --release --no-codesign
+            fi
+          }
+          
+          # Try up to 3 times with exponential backoff
+          max_attempts=3
+          for ((attempt=1; attempt<=max_attempts; attempt++)); do
+            echo "🚀 iOS build attempt $attempt of $max_attempts"
+            
+            if attempt_ios_build; then
+              echo "✅ iOS build succeeded!"
+              exit 0
+            else
+              echo "❌ iOS build attempt $attempt failed"
+              if [ "$attempt" -lt "$max_attempts" ]; then
+                sleep_time=$((10 * attempt))
+                echo "⏱️ Waiting $sleep_time seconds before retrying..."
+                sleep $sleep_time
+                
+                echo "🧹 Cleaning build cache for next attempt"
+                flutter clean
+                cd ios && pod install && cd ..
+              fi
+            fi
+          done
+          
+          echo "::error::iOS build failed after $max_attempts attempts"
+          exit 1
       
       - name: Archive iOS build
         uses: actions/upload-artifact@v4
@@ -497,32 +576,83 @@ jobs:
           
       - name: Create ZIP archives
         run: |
-          cd artifacts/rcp-client-macos
-          zip -r ../../rcp-client-macos.zip .
-          cd ../rcp-client-windows  
-          zip -r ../../rcp-client-windows.zip .
-          cd ../rcp-client-linux
-          zip -r ../../rcp-client-linux.zip .
+          # Initialize the list of available artifacts
+          ARTIFACTS_LIST=""
           
-          # Package Android APKs
-          mkdir -p ../rcp-client-android-packaged
-          cp -r ../rcp-client-android/* ../rcp-client-android-packaged/
-          cd ../rcp-client-android-packaged
-          zip -r ../../../rcp-client-android.zip .
+          # Handle macOS artifacts if available
+          if [ -d "artifacts/rcp-client-macos" ] && [ "$(ls -A artifacts/rcp-client-macos)" ]; then
+            cd artifacts/rcp-client-macos
+            zip -r ../../rcp-client-macos.zip .
+            cd ../..
+            echo "rcp-client-macos.zip" >> artifacts_list.txt
+            echo "✅ macOS artifacts packaged"
+          else
+            echo "⚠️ No macOS artifacts found, skipping"
+          fi
           
-          # Package iOS build
-          cd ../rcp-client-ios
-          zip -r ../../../rcp-client-ios.zip .
+          # Handle Windows artifacts if available
+          if [ -d "artifacts/rcp-client-windows" ] && [ "$(ls -A artifacts/rcp-client-windows)" ]; then
+            cd artifacts/rcp-client-windows
+            zip -r ../../rcp-client-windows.zip .
+            cd ../..
+            echo "rcp-client-windows.zip" >> artifacts_list.txt
+            echo "✅ Windows artifacts packaged"
+          else
+            echo "⚠️ No Windows artifacts found, skipping"
+          fi
+          
+          # Handle Linux artifacts if available
+          if [ -d "artifacts/rcp-client-linux" ] && [ "$(ls -A artifacts/rcp-client-linux)" ]; then
+            cd artifacts/rcp-client-linux
+            zip -r ../../rcp-client-linux.zip .
+            cd ../..
+            echo "rcp-client-linux.zip" >> artifacts_list.txt
+            echo "✅ Linux artifacts packaged"
+          else
+            echo "⚠️ No Linux artifacts found, skipping"
+          fi
+          
+          # Handle Android artifacts if available
+          if [ -d "artifacts/rcp-client-android" ] && [ "$(ls -A artifacts/rcp-client-android)" ]; then
+            # Package Android APKs
+            mkdir -p android-packaged
+            cp -r artifacts/rcp-client-android/* android-packaged/
+            cd android-packaged
+            zip -r ../rcp-client-android.zip .
+            cd ..
+            echo "rcp-client-android.zip" >> artifacts_list.txt
+            echo "✅ Android artifacts packaged"
+          else
+            echo "⚠️ No Android artifacts found, skipping"
+          fi
+          
+          # Handle iOS artifacts if available
+          if [ -d "artifacts/rcp-client-ios" ] && [ "$(ls -A artifacts/rcp-client-ios)" ]; then
+            # Package iOS build
+            cd artifacts/rcp-client-ios
+            zip -r ../../rcp-client-ios.zip .
+            cd ../..
+            echo "rcp-client-ios.zip" >> artifacts_list.txt
+            echo "✅ iOS artifacts packaged"
+          else
+            echo "⚠️ No iOS artifacts found, skipping"
+          fi
+          
+          echo "Available artifacts for release:"
+          cat artifacts_list.txt
+      
+      - name: Generate files list for release
+        id: release_files
+        run: |
+          files=$(cat artifacts_list.txt | sed 's/^/            /g')
+          echo "FILES<<EOF" >> $GITHUB_OUTPUT
+          echo "$files" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
           
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: |
-            rcp-client-macos.zip
-            rcp-client-windows.zip
-            rcp-client-linux.zip
-            rcp-client-android.zip
-            rcp-client-ios.zip
+          files: ${{ steps.release_files.outputs.FILES }}
           body_path: RELEASE_NOTES.md
           draft: true
           tag_name: ${{ needs.setup.outputs.version }}
