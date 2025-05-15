@@ -34,6 +34,32 @@ mkdir -p "$OUTPUT_DIR"
 
 echo "Building Rust FFI bridge for all platforms..."
 
+# Function to check if target is installed and add it if in CI environment
+ensure_target_installed() {
+    local target=$1
+    
+    # Check if target is already installed
+    if ! rustup target list --installed | grep -q "$target"; then
+        echo "Target $target is not installed"
+        
+        # Only auto-install targets in CI environment
+        if [ "$IS_CI" = "1" ]; then
+            echo "Installing target $target for CI build..."
+            rustup target add "$target" || {
+                echo "Warning: Failed to install target $target, build may fail"
+                return 1
+            }
+            echo "Target $target installed successfully"
+        else
+            echo "Skipping target installation (not in CI). You may want to run: rustup target add $target"
+        fi
+    else
+        echo "Target $target is already installed"
+    fi
+    
+    return 0
+}
+
 # Function to compile for a target
 compile_for_target() {
     local target=$1
@@ -47,6 +73,9 @@ compile_for_target() {
         echo "Error: Bridge directory not found at $BRIDGE_DIR"
         exit 1
     fi
+    
+    # Ensure the target is installed
+    ensure_target_installed "$target"
     
     # Navigate to the bridge directory
     cd "$BRIDGE_DIR" || exit 1
