@@ -2,7 +2,17 @@
 # Setup script for CI environments
 set -e
 
+# Get the absolute path of the script directory
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+ROOT_DIR="$( cd "$SCRIPT_DIR/.." &> /dev/null && pwd )"
+
 echo "Setting up CI environment..."
+echo "Project root directory: $ROOT_DIR"
+
+# Create necessary directories
+mkdir -p "$ROOT_DIR/build/native_assets/macos" 2>/dev/null || true
+mkdir -p "$ROOT_DIR/build/native_assets/ios" 2>/dev/null || true
+mkdir -p "$ROOT_DIR/build/native_assets/android" 2>/dev/null || true
 
 # Install required Rust targets
 echo "Installing required Rust targets..."
