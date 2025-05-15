@@ -51,7 +51,25 @@ EOF
         if [ -f "./macos/Podfile" ]; then
             echo "Updating Podfile to skip code signing validation..."
             sed -i '' 's/platform :osx.*/platform :osx, '\''10.14'\''\n\ninstall! '\''cocoapods'\'', :disable_input_output_paths => true/' ./macos/Podfile
-            sed -i '' '/post_install/,/end/{s/target.build_configurations.each do |config|/target.build_configurations.each do |config|\n      config.build_settings['\''CODE_SIGNING_ALLOWED'\''] = '\''NO'\''\n      config.build_settings['\''CODE_SIGNING_REQUIRED'\''] = '\''NO'\''\n      config.build_settings['\''CODE_SIGN_IDENTITY'\''] = '\''-'\''/}' ./macos/Podfile
+            # Breaking the sed command into multiple steps to avoid complex nested quotes
+            TMP_FILE=$(mktemp)
+            cat ./macos/Podfile > "$TMP_FILE"
+            
+            # Now apply the changes more carefully
+            awk '
+            BEGIN { found=0; }
+            /post_install/ { found=1; }
+            /target.build_configurations.each do \|config\|/ && found==1 {
+              print $0;
+              print "      config.build_settings[\"CODE_SIGNING_ALLOWED\"] = \"NO\"";
+              print "      config.build_settings[\"CODE_SIGNING_REQUIRED\"] = \"NO\"";
+              print "      config.build_settings[\"CODE_SIGN_IDENTITY\"] = \"-\"";
+              next;
+            }
+            { print $0; }
+            ' "$TMP_FILE" > ./macos/Podfile
+            
+            rm -f "$TMP_FILE"
         fi
     fi
 fi

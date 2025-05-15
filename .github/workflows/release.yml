@@ -378,9 +378,28 @@ jobs:
     
     - name: Package Windows App
       run: |
-        mkdir rcp-client-windows
-        xcopy /E /I build\windows\runner\Release\* rcp-client-windows\
-        Compress-Archive -Path rcp-client-windows\* -DestinationPath rcp-client-windows.zip
+        mkdir -p rcp-client-windows
+        # First check if files exist
+        if (Test-Path -Path "build\windows\runner\Release\*") {
+            Write-Host "Found Windows build files, copying..."
+            # Use robocopy instead of xcopy for better error handling
+            robocopy "build\windows\runner\Release" "rcp-client-windows" /E
+            # robocopy returns non-zero exit codes for successful operations with details
+            # 0-7 are generally successful, 8+ indicate errors
+            if ($LASTEXITCODE -lt 8) {
+                Write-Host "Files copied successfully"
+                $LASTEXITCODE = 0  # Reset exit code to success
+            }
+        } else {
+            Write-Host "No build files found at build\windows\runner\Release"
+            Get-ChildItem -Path "build\windows" -Recurse | ForEach-Object {
+                Write-Host $_.FullName
+            }
+            exit 1
+        }
+        
+        # Create zip archive
+        Compress-Archive -Path "rcp-client-windows\*" -DestinationPath rcp-client-windows.zip
     
     - name: Upload Release Asset
       uses: actions/github-script@v7
