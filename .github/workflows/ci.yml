@@ -157,7 +157,7 @@ jobs:
       
       # Download rust bridge artifacts from previous job
       - name: Download rust bridge artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: rust-bridge-lib
           path: build/native_assets
