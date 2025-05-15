@@ -5,16 +5,16 @@ import 'package:flutter/services.dart';
 class CopyableErrorMessage extends StatelessWidget {
   /// The error message to display
   final String message;
-  
+
   /// Optional title for the error message
   final String title;
-  
+
   /// Optional additional padding
   final EdgeInsetsGeometry padding;
-  
+
   /// Optional margin
   final EdgeInsetsGeometry margin;
-  
+
   /// Callback when error is copied
   final VoidCallback? onCopied;
 
@@ -34,10 +34,10 @@ class CopyableErrorMessage extends StatelessWidget {
       padding: padding,
       margin: margin,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.error.withOpacity(0.1),
+        color: Theme.of(context).colorScheme.error.withAlpha(26), // Using withAlpha instead of withOpacity (0.1 * 255 ≈ 26)
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: Theme.of(context).colorScheme.error.withOpacity(0.3),
+          color: Theme.of(context).colorScheme.error.withAlpha(77), // Using withAlpha instead of withOpacity (0.3 * 255 ≈ 77)
         ),
       ),
       child: Column(
@@ -74,19 +74,14 @@ class CopyableErrorMessage extends StatelessWidget {
                   onCopied?.call();
                 },
                 padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(
-                  minWidth: 36,
-                  minHeight: 36,
-                ),
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
               ),
             ],
           ),
           const SizedBox(height: 8),
           SelectableText(
             message,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.error,
-            ),
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
         ],
       ),

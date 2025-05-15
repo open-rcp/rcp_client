@@ -7,12 +7,8 @@ import '../utils/constants.dart';
 class AppCard extends StatelessWidget {
   final AppInfo app;
   final VoidCallback onTap;
-  
-  const AppCard({
-    super.key,
-    required this.app,
-    required this.onTap,
-  });
+
+  const AppCard({super.key, required this.app, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -24,11 +20,8 @@ class AppCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // App icon
-            Expanded(
-              flex: 3,
-              child: _buildAppIcon(),
-            ),
-            
+            Expanded(flex: 3, child: _buildAppIcon()),
+
             // App information
             Expanded(
               flex: 2,
@@ -36,7 +29,8 @@ class AppCard extends StatelessWidget {
                 padding: const EdgeInsets.all(12.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min, // Make column take minimum space needed
+                  mainAxisSize:
+                      MainAxisSize.min, // Make column take minimum space needed
                   children: [
                     // App name
                     Text(
@@ -49,10 +43,11 @@ class AppCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
-                    
+
                     // App description
                     if (app.description != null) ...[
-                      Flexible(  // Wrap with Flexible to prevent overflow
+                      Flexible(
+                        // Wrap with Flexible to prevent overflow
                         child: Text(
                           app.description!,
                           style: TextStyle(
@@ -64,9 +59,10 @@ class AppCard extends StatelessWidget {
                         ),
                       ),
                     ],
-                    
+
                     // App metadata
-                    Flexible(  // Wrap with Flexible to prevent overflow
+                    Flexible(
+                      // Wrap with Flexible to prevent overflow
                       child: Row(
                         children: [
                           // Publisher
@@ -80,7 +76,7 @@ class AppCard extends StatelessWidget {
                               ),
                             ),
                           ],
-                          
+
                           // Version
                           if (app.version != null) ...[
                             Text(
@@ -95,11 +91,11 @@ class AppCard extends StatelessWidget {
                 ),
               ),
             ),
-            
+
             // Launch bar
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              color: Theme.of(context).colorScheme.surfaceVariant,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest, // Updated from surfaceVariant
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -116,19 +112,12 @@ class AppCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  
+
                   // Launch button
                   if (app.available)
-                    const Icon(
-                      Icons.launch,
-                      size: 18,
-                    )
+                    const Icon(Icons.launch, size: 18)
                   else
-                    const Icon(
-                      Icons.lock,
-                      size: 18,
-                      color: Colors.grey,
-                    ),
+                    const Icon(Icons.lock, size: 18, color: Colors.grey),
                 ],
               ),
             ),
@@ -137,7 +126,7 @@ class AppCard extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildAppIcon() {
     // If we have icon data, use it
     if (app.iconData != null) {
@@ -151,10 +140,10 @@ class AppCard extends StatelessWidget {
         ),
       );
     }
-    
+
     // Otherwise, use a placeholder based on the app name
     final nameInitial = app.name.isNotEmpty ? app.name[0].toUpperCase() : '?';
-    
+
     return Container(
       color: _getColorFromString(app.name),
       alignment: Alignment.center,
@@ -168,7 +157,7 @@ class AppCard extends StatelessWidget {
       ),
     );
   }
-  
+
   Color _getColorFromString(String input) {
     // Generate a deterministic color based on the string
     final colors = [
@@ -183,12 +172,12 @@ class AppCard extends StatelessWidget {
       Colors.cyan,
       Colors.amber[700]!,
     ];
-    
+
     int hash = 0;
     for (var i = 0; i < input.length; i++) {
       hash = input.codeUnitAt(i) + ((hash << 5) - hash);
     }
-    
+
     final index = (hash % colors.length).abs();
     return colors[index];
   }

@@ -26,6 +26,18 @@ jobs:
           channel: 'stable'
           cache: true
       
+      # Cache dependencies
+      - name: Cache Flutter dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.pub-cache/
+            ~/.cache/pub/
+            .dart_tool/
+          key: ubuntu-flutter-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ubuntu-flutter-
+      
       - name: Install dependencies
         run: flutter pub get
       
@@ -34,6 +46,15 @@ jobs:
       
       - name: Run tests
         run: flutter test
+      
+      # Cache test results to speed up future runs
+      - name: Cache test results
+        uses: actions/cache@v3
+        with:
+          path: .dart_tool/test_results
+          key: test-results-${{ hashFiles('**/pubspec.lock', 'lib/**/*.dart', 'test/**/*.dart') }}
+          restore-keys: |
+            test-results-
 
   build_rust_bridge:
     name: Build Rust Bridge
@@ -50,6 +71,17 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "rust -> target, rust_bridge -> target"
+          cache-on-failure: true
+          shared-key: "rust-bridge-${{ hashFiles('**/Cargo.lock') }}"
+      
+      - name: Check rust-bridge cache
+        id: rust-bridge-cache
+        uses: actions/cache@v3
+        with:
+          path: build/native_assets
+          key: rust-bridge-${{ runner.os }}-${{ hashFiles('rust_bridge/**/*.rs', 'rust_bridge/**/*.toml', 'rust_bridge/Cargo.lock') }}
+          restore-keys: |
+            rust-bridge-${{ runner.os }}-
       
       - name: Run clippy with warnings as errors
         working-directory: ./rust
@@ -60,7 +92,15 @@ jobs:
         run: cargo fmt --all -- --check
       
       - name: Build rust bridge
+        if: steps.rust-bridge-cache.outputs.cache-hit != 'true'
         run: ./build_rust_bridge.sh
+      
+      - name: Archive rust bridge artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: rust-bridge-lib
+          path: build/native_assets/
+          retention-days: 7
 
   build_flutter_app:
     name: Build Flutter App
@@ -73,14 +113,17 @@ jobs:
             platform: linux
             build_command: "flutter build linux --release"
             output_path: "build/linux/x64/release/bundle"
+            deps_cmd: "sudo apt-get update && sudo apt-get install -y libgtk-3-dev libblkid-dev liblzma-dev libsecret-1-dev libjsoncpp-dev libsqlite3-dev pkg-config ninja-build clang cmake"
           - os: windows-latest
             platform: windows
             build_command: "flutter build windows --release"
             output_path: "build/windows/runner/Release"
+            deps_cmd: ""
           - os: macos-latest
             platform: macos
             build_command: "flutter build macos --release --no-codesign"
             output_path: "build/macos/Build/Products/Release/rcp_client.app"
+            deps_cmd: ""
     
     runs-on: ${{ matrix.os }}
     steps:
@@ -98,12 +141,32 @@ jobs:
         with:
           components: clippy, rustfmt
       
+      # Flutter pub get cache - using a path that works across platforms
+      - name: Cache Flutter dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.pub-cache/
+            ~/.cache/pub/
+            ~/AppData/Local/Pub/Cache/
+            .dart_tool/
+            build/
+          key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-flutter-
+      
+      # Download rust bridge artifacts from previous job
+      - name: Download rust bridge artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: rust-bridge-lib
+          path: build/native_assets
+      
       # Platform-specific setup
-      - name: Install Linux dependencies
-        if: matrix.platform == 'linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libblkid-dev liblzma-dev libsecret-1-dev libjsoncpp-dev libsqlite3-dev pkg-config ninja-build clang cmake
+      - name: Install platform dependencies
+        if: matrix.deps_cmd != ''
+        run: ${{ matrix.deps_cmd }}
+        shell: bash
       
       - name: Install Flutter dependencies
         run: flutter pub get

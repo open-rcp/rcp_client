@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../models/app_state.dart';
@@ -22,9 +21,9 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
-  
+
   final _authService = AuthService();
-  
+
   bool _isLoading = false;
   bool _rememberMe = false;
   String? _errorMessage;
@@ -45,10 +44,10 @@ class _LoginScreenState extends State<LoginScreen> {
   /// Check for stored credentials and try to auto-login
   Future<void> _checkStoredCredentials() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final user = await _authService.checkStoredCredentials();
-      
+
       if (user != null) {
         if (!mounted) return;
         _handleSuccessfulLogin(user);
@@ -68,22 +67,22 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
-    
+
     final username = _usernameController.text;
     final password = _passwordController.text;
-    
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
-    
+
     try {
       final user = await _authService.login(
         username,
         password,
         rememberMe: _rememberMe,
       );
-      
+
       if (!mounted) return;
       _handleSuccessfulLogin(user);
     } catch (e) {
@@ -99,7 +98,7 @@ class _LoginScreenState extends State<LoginScreen> {
     // Update app state
     final appState = context.read<AppState>();
     appState.setAuthenticated(true, user: user);
-    
+
     // Navigate to app launcher screen
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (context) => const AppLauncherScreen()),
@@ -115,14 +114,15 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: _isLoading && _errorMessage == null
-            ? const Center(child: CircularProgressIndicator())
-            : Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 400),
-                  child: _buildLoginForm(),
+        child:
+            _isLoading && _errorMessage == null
+                ? const Center(child: CircularProgressIndicator())
+                : Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 400),
+                    child: _buildLoginForm(),
+                  ),
                 ),
-              ),
       ),
     );
   }
@@ -141,7 +141,7 @@ class _LoginScreenState extends State<LoginScreen> {
             color: AppTheme.primaryColor,
           ),
           const SizedBox(height: 24),
-          
+
           // Error message
           if (_errorMessage != null) ...[
             CopyableErrorMessage(
@@ -150,7 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 16),
           ],
-          
+
           // Username input field
           TextFormField(
             controller: _usernameController,
@@ -159,11 +159,15 @@ class _LoginScreenState extends State<LoginScreen> {
               border: OutlineInputBorder(),
               prefixIcon: Icon(Icons.person),
             ),
-            validator: (value) => FormValidators.validateRequired(value, fieldName: 'Username'),
+            validator:
+                (value) => FormValidators.validateRequired(
+                  value,
+                  fieldName: 'Username',
+                ),
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: 16),
-          
+
           // Password input field
           TextFormField(
             controller: _passwordController,
@@ -172,11 +176,15 @@ class _LoginScreenState extends State<LoginScreen> {
               border: OutlineInputBorder(),
               prefixIcon: Icon(Icons.lock),
             ),
-            validator: (value) => FormValidators.validateRequired(value, fieldName: 'Password'),
+            validator:
+                (value) => FormValidators.validateRequired(
+                  value,
+                  fieldName: 'Password',
+                ),
             obscureText: true,
           ),
           const SizedBox(height: 8),
-          
+
           // Remember me checkbox
           Row(
             children: [
@@ -193,35 +201,37 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
           ),
           const SizedBox(height: 24),
-          
+
           // Login button
           ElevatedButton(
             onPressed: _isLoading ? null : _login,
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
-            child: _isLoading
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Login'),
+            child:
+                _isLoading
+                    ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                    : const Text('Login'),
           ),
           const SizedBox(height: 16),
-          
+
           // Back button
           TextButton(
-            onPressed: _isLoading
-                ? null
-                : () {
-                    // Reset connection in app state
-                    final appState = context.read<AppState>();
-                    appState.setConnected(false);
-                    
-                    // Navigate back to connection screen
-                    Navigator.of(context).pop();
-                  },
+            onPressed:
+                _isLoading
+                    ? null
+                    : () {
+                      // Reset connection in app state
+                      final appState = context.read<AppState>();
+                      appState.setConnected(false);
+
+                      // Navigate back to connection screen
+                      Navigator.of(context).pop();
+                    },
             child: const Text('Back to Connection'),
           ),
         ],

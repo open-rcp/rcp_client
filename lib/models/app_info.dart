@@ -2,28 +2,28 @@
 class AppInfo {
   /// Unique identifier for the application
   final String id;
-  
+
   /// Display name of the application
   final String name;
-  
+
   /// Optional description of the application
   final String? description;
-  
+
   /// Application icon data (base64 encoded if available)
   final String? iconData;
-  
+
   /// Timestamp when the app was last launched (null if never launched)
   final DateTime? lastLaunch;
-  
+
   /// Version information for the application
   final String? version;
-  
+
   /// Publisher or author of the application
   final String? publisher;
-  
+
   /// Tags or categories for the application
   final List<String> tags;
-  
+
   /// Whether this application is available to launch
   final bool available;
 
@@ -47,14 +47,15 @@ class AppInfo {
       name: json['name'] as String,
       description: json['description'] as String?,
       iconData: json['icon_data'] as String?,
-      lastLaunch: json['last_launch'] != null 
-          ? DateTime.parse(json['last_launch'] as String) 
-          : null,
+      lastLaunch:
+          json['last_launch'] != null
+              ? DateTime.parse(json['last_launch'] as String)
+              : null,
       version: json['version'] as String?,
       publisher: json['publisher'] as String?,
-      tags: (json['tags'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList() ?? [],
+      tags:
+          (json['tags'] as List<dynamic>?)?.map((e) => e as String).toList() ??
+          [],
       available: json['available'] as bool? ?? true,
     );
   }

@@ -63,6 +63,18 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "rust -> target, rust_bridge -> target"
+          cache-on-failure: true
+          shared-key: "rust-bridge-${{ hashFiles('**/Cargo.lock') }}"
+      
+      # Try to reuse the previously built rust bridge from CI
+      - name: Check rust-bridge cache
+        id: rust-bridge-cache
+        uses: actions/cache@v3
+        with:
+          path: build/native_assets
+          key: rust-bridge-ubuntu-latest-${{ hashFiles('rust_bridge/**/*.rs', 'rust_bridge/**/*.toml', 'rust_bridge/Cargo.lock') }}
+          restore-keys: |
+            rust-bridge-ubuntu-latest-
       
       - name: Run clippy
         working-directory: ./rust
@@ -73,6 +85,7 @@ jobs:
         run: cargo fmt --all -- --check
       
       - name: Build rust bridge (default target)
+        if: steps.rust-bridge-cache.outputs.cache-hit != 'true'
         run: ./build_rust_bridge.sh
       
       - name: Archive rust bridge
