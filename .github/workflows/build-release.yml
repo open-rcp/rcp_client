@@ -86,7 +86,7 @@ jobs:
       
       - name: Build rust bridge (default target)
         if: steps.rust-bridge-cache.outputs.cache-hit != 'true'
-        run: ./build_rust_bridge.sh
+        run: ./scripts/build/build_rust_bridge.sh
       
       - name: Archive rust bridge
         uses: actions/upload-artifact@v4
@@ -138,13 +138,13 @@ jobs:
       
       - name: Copy native libraries
         run: |
-          chmod +x ./copy_native_libs.sh
-          ./copy_native_libs.sh
+          chmod +x ./scripts/build/copy_native_libs.sh
+          ./scripts/build/copy_native_libs.sh
       
       - name: Build macOS app
         run: |
-          chmod +x ./build_macos.sh
-          ./build_macos.sh
+          chmod +x ./scripts/build/build_macos.sh
+          ./scripts/build/build_macos.sh
       
       - name: Archive macOS build
         uses: actions/upload-artifact@v4
@@ -192,14 +192,14 @@ jobs:
       - name: Copy native libraries
         shell: bash
         run: |
-          chmod +x ./copy_native_libs.sh
-          ./copy_native_libs.sh
+          chmod +x ./scripts/build/copy_native_libs.sh
+          ./scripts/build/copy_native_libs.sh
       
       - name: Build Windows application
         shell: bash
         run: |
-          chmod +x ./build_windows.sh
-          ./build_windows.sh
+          chmod +x ./scripts/build/build_windows.sh
+          ./scripts/build/build_windows.sh
       
       - name: Archive Windows build
         uses: actions/upload-artifact@v4
