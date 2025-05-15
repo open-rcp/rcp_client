@@ -3,6 +3,7 @@
 A cross-platform client for the Rust/Remote Control Protocol (RCP) system, built using Flutter and Rust with a dependency-free architecture.
 
 ![CI Status](https://github.com/open-rcp/rcp_client/actions/workflows/ci.yml/badge.svg)
+![Release Status](https://github.com/open-rcp/rcp_client/actions/workflows/build-release.yml/badge.svg)
 
 
 ## Overview
@@ -29,9 +30,9 @@ The RCP Client is designed to provide a modern, cross-platform solution for conn
 
 If you encounter a "Failed to initialize RCP service: Exception: Could not find native library" error:
 
-1. Make sure you've built the Rust library in the correct location:
+1. Make sure you've built the Rust bridge library in the correct location:
    ```bash
-   cd rust
+   cd rust_bridge
    cargo build --release --target-dir=./target
    cd ..
    ```
@@ -40,8 +41,8 @@ If you encounter a "Failed to initialize RCP service: Exception: Could not find 
    ```bash
    # For macOS:
    mkdir -p macos/Runner/Frameworks
-   cp rust/target/release/librcp_bridge.dylib macos/Runner/Frameworks/
-   install_name_tool -id "@executable_path/../Frameworks/librcp_bridge.dylib" macos/Runner/Frameworks/librcp_bridge.dylib
+   cp rust_bridge/target/release/librcpb.dylib macos/Runner/Frameworks/
+   install_name_tool -id "@executable_path/../Frameworks/librcpb.dylib" macos/Runner/Frameworks/librcpb.dylib
    ```
 
 3. Check that the library paths in `lib/utils/native_library.dart` include the correct location for your development environment.

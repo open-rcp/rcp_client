@@ -89,7 +89,7 @@ class NativeLibrary {
       throw Exception(
         'Failed to initialize RCP service: Could not load native library: $libraryName.\n\n'
         'To fix this issue, please try the following steps:\n'
-        '1. Build the Rust library: cd rust && cargo build --release\n'
+        '1. Build the Rust library: cd rust_bridge && cargo build --release\n'
         '2. Run the copy script: ./copy_macos_libs.sh\n'
         '3. Clean and rebuild: flutter clean && flutter build macos --debug\n\n'
         'The library should be located at: build/macos/Build/Products/Debug/rcp_client.app/Contents/Frameworks/$libraryName',
