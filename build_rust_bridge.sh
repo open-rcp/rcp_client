@@ -160,6 +160,7 @@ else
             cp "$OUTPUT_DIR/windows/rcpb.dll" "$ROOT_DIR/windows/runner/Release/"
             echo "✅ Copied Windows DLLs to runner directories"
         fi
+    fi
 fi
 
 echo "All builds completed successfully"
