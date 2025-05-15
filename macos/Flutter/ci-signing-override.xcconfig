@@ -1,0 +1,7 @@
+# These settings are used for CI builds where code signing isn't available
+# This should be included in the Flutter-Generated.xcconfig file
+CODE_SIGNING_ALLOWED=NO
+CODE_SIGNING_REQUIRED=NO
+CODE_SIGN_IDENTITY=-
+CODE_SIGN_ENTITLEMENTS=
+OTHER_CODE_SIGN_FLAGS=--options=runtime

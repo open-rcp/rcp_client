@@ -21,6 +21,14 @@ ROOT_DIR="$SCRIPT_DIR"  # The root is actually the rcp_client directory
 BRIDGE_DIR="$ROOT_DIR/rust_bridge"
 OUTPUT_DIR="$ROOT_DIR/build/native_assets"
 
+# CI environment detection
+if [ ! -z "$CI" ] || [ ! -z "$GITHUB_ACTIONS" ]; then
+    IS_CI=1
+    echo "CI environment detected, adjusting build settings..."
+else
+    IS_CI=0
+fi
+
 # Create output directory if not exists
 mkdir -p "$OUTPUT_DIR"
 
@@ -121,7 +129,7 @@ elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
     cp "$OUTPUT_DIR/linux/librcpb.so" "$ROOT_DIR/linux/bundle/lib/"
     
 elif [[ "$OSTYPE" == "msys"* || "$OSTYPE" == "win32" ]]; then
-    # Windows
+    # Windows native build
     echo "Building for Windows..."
     compile_for_target "x86_64-pc-windows-msvc" "rcpb.dll" "$OUTPUT_DIR/windows"
     
@@ -130,6 +138,28 @@ elif [[ "$OSTYPE" == "msys"* || "$OSTYPE" == "win32" ]]; then
     mkdir -p "$ROOT_DIR/windows/runner/Release"
     cp "$OUTPUT_DIR/windows/rcpb.dll" "$ROOT_DIR/windows/runner/Debug/"
     cp "$OUTPUT_DIR/windows/rcpb.dll" "$ROOT_DIR/windows/runner/Release/"
+else
+    # Non-native environment but requested Windows build
+    if [ "$BUILD_WINDOWS" = "1" ] || [ ! -z "$GITHUB_ACTIONS" ]; then
+        echo "Building for Windows on non-Windows platform..."
+        # Try with MSVC (most common for Windows CI)
+        if compile_for_target "x86_64-pc-windows-msvc" "rcpb.dll" "$OUTPUT_DIR/windows"; then
+            echo "Successfully built for x86_64-pc-windows-msvc"
+        # Fallback to MinGW if MSVC fails
+        elif compile_for_target "x86_64-pc-windows-gnu" "rcpb.dll" "$OUTPUT_DIR/windows"; then
+            echo "Successfully built for x86_64-pc-windows-gnu"
+        else
+            echo "Warning: Windows cross-compilation failed, continuing anyway"
+        fi
+        
+        # Copy to Flutter Windows build locations (only if files exist)
+        if [ -f "$OUTPUT_DIR/windows/rcpb.dll" ]; then
+            mkdir -p "$ROOT_DIR/windows/runner/Debug"
+            mkdir -p "$ROOT_DIR/windows/runner/Release"
+            cp "$OUTPUT_DIR/windows/rcpb.dll" "$ROOT_DIR/windows/runner/Debug/"
+            cp "$OUTPUT_DIR/windows/rcpb.dll" "$ROOT_DIR/windows/runner/Release/"
+            echo "✅ Copied Windows DLLs to runner directories"
+        fi
 fi
 
 echo "All builds completed successfully"

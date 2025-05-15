@@ -1,0 +1,102 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: ['v*']
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      
+      - name: Setup CI environment
+        run: |
+          chmod +x ./ci/setup_ci.sh
+          ./ci/setup_ci.sh
+      
+      - name: Install dependencies
+        run: |
+          flutter pub get
+      
+      - name: Build macOS app
+        run: |
+          chmod +x ./build_macos.sh
+          ./build_macos.sh
+      
+      - name: Archive macOS build
+        uses: actions/upload-artifact@v3
+        with:
+          name: rcp-client-macos
+          path: build/macos/Build/Products/Release/rcp_client.app
+  
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+          targets: x86_64-pc-windows-msvc
+      
+      - name: Setup Visual Studio tools
+        uses: ilammy/msvc-dev-cmd@v1
+      
+      - name: Install dependencies
+        run: |
+          flutter config --enable-windows-desktop
+          flutter pub get
+      
+      - name: Build Windows application
+        shell: bash
+        run: |
+          chmod +x ./build_windows.sh
+          ./build_windows.sh
+      
+      - name: Archive Windows build
+        uses: actions/upload-artifact@v3
+        with:
+          name: rcp-client-windows
+          path: rcp-client-windows/
+          
+  create-release:
+    needs: [build-macos, build-windows]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+          
+      - name: Create ZIP archives
+        run: |
+          cd artifacts/rcp-client-macos
+          zip -r ../../rcp-client-macos.zip .
+          cd ../rcp-client-windows  
+          zip -r ../../rcp-client-windows.zip .
+          
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            rcp-client-macos.zip
+            rcp-client-windows.zip
+          draft: true
+          generate_release_notes: true
