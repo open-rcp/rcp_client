@@ -1,29 +1,29 @@
 // User model for authentication and user information
 class User {
-  /// Unique identifier for the user 
+  /// Unique identifier for the user
   final String id;
-  
+
   /// Username for authentication
   final String username;
-  
+
   /// Display name (if different from username)
   final String? displayName;
-  
+
   /// User email address
   final String? email;
-  
+
   /// User profile image (base64 encoded if available)
   final String? avatarData;
-  
+
   /// User roles or permissions
   final List<String> roles;
-  
+
   /// User preferences
   final Map<String, dynamic> preferences;
-  
+
   /// Authentication token (if applicable)
   final String? token;
-  
+
   /// Whether the user credentials should be remembered
   final bool rememberMe;
 
@@ -58,9 +58,9 @@ class User {
       displayName: json['display_name'] as String?,
       email: json['email'] as String?,
       avatarData: json['avatar_data'] as String?,
-      roles: (json['roles'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList() ?? [],
+      roles:
+          (json['roles'] as List<dynamic>?)?.map((e) => e as String).toList() ??
+          [],
       preferences: json['preferences'] as Map<String, dynamic>? ?? {},
       token: json['token'] as String?,
       rememberMe: json['remember_me'] as bool? ?? false,
@@ -106,10 +106,10 @@ class User {
       rememberMe: rememberMe ?? this.rememberMe,
     );
   }
-  
+
   /// Check if the user has a specific role
   bool hasRole(String role) => roles.contains(role);
-  
+
   /// Check if the user is authenticated (non-guest)
   bool get isAuthenticated => id != 'guest' && username != 'guest';
 }
