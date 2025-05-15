@@ -17,7 +17,7 @@ set -e
 
 # Get the absolute path of the script directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-ROOT_DIR="$SCRIPT_DIR"  # The root is actually the rcp_client directory
+ROOT_DIR="$( cd "$SCRIPT_DIR/../.." &> /dev/null && pwd )"  # Navigate up to the rcp_client directory
 BRIDGE_DIR="$ROOT_DIR/rust_bridge"
 OUTPUT_DIR="$ROOT_DIR/build/native_assets"
 
