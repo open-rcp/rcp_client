@@ -89,7 +89,7 @@ jobs:
         run: ./build_rust_bridge.sh
       
       - name: Archive rust bridge
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: rust-bridge-lib
           path: build/native_assets/
@@ -147,7 +147,7 @@ jobs:
           ./build_macos.sh
       
       - name: Archive macOS build
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: rcp-client-macos
           path: build/macos/Build/Products/Release/rcp_client.app
@@ -202,7 +202,7 @@ jobs:
           ./build_windows.sh
       
       - name: Archive Windows build
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: rcp-client-windows
           path: rcp-client-windows/

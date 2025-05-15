@@ -96,7 +96,7 @@ jobs:
         run: ./build_rust_bridge.sh
       
       - name: Archive rust bridge artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: rust-bridge-lib
           path: build/native_assets/
@@ -177,7 +177,7 @@ jobs:
       
       # Upload artifacts
       - name: Upload App
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: rcp-client-${{ matrix.platform }}
           path: ${{ matrix.output_path }}
