@@ -53,7 +53,7 @@ if [ -f "$RUST_LIB_FILE" ]; then
     echo "✓ Found at $RUST_LIB_FILE"
 else
     echo "✗ Not found at $RUST_LIB_FILE"
-    echo "  Please build the Rust library by running: cd rust && cargo build --release"
+    echo "  Please build the Rust library by running: cd rust_bridge && cargo build --release"
     exit 1
 fi
 

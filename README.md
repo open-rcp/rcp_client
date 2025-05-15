@@ -1,10 +1,11 @@
 # RCP Client
 
-A cross-platform client for the Remote Computing Protocol (RCP) system, built using Flutter and Rust with a dependency-free architecture.
+A cross-platform client for the Rust/Remote Control Protocol (RCP) system, built using Flutter and Rust with a dependency-free architecture.
 
 ![CI Status](https://github.com/open-rcp/rcp_client/actions/workflows/ci.yml/badge.svg)
-![Build Status](https://github.com/open-rcp/rcp_client/actions/workflows/build.yml/badge.svg)
-![Release Status](https://github.com/open-rcp/rcp_client/actions/workflows/release.yml/badge.svg)
+![Release Status](https://github.com/open-rcp/rcp_client/actions/workflows/build-release.yml/badge.svg)
+
+
 ## Overview
 
 The RCP Client is designed to provide a modern, cross-platform solution for connecting to RCP servers. It leverages Flutter's UI capabilities while integrating with the Rust-based RCP client libraries through a dedicated Foreign Function Interface (FFI) bridge, ensuring clean separation of concerns and minimizing dependencies.
@@ -29,9 +30,9 @@ The RCP Client is designed to provide a modern, cross-platform solution for conn
 
 If you encounter a "Failed to initialize RCP service: Exception: Could not find native library" error:
 
-1. Make sure you've built the Rust library in the correct location:
+1. Make sure you've built the Rust bridge library in the correct location:
    ```bash
-   cd rust
+   cd rust_bridge
    cargo build --release --target-dir=./target
    cd ..
    ```
@@ -40,8 +41,8 @@ If you encounter a "Failed to initialize RCP service: Exception: Could not find 
    ```bash
    # For macOS:
    mkdir -p macos/Runner/Frameworks
-   cp rust/target/release/librcp_bridge.dylib macos/Runner/Frameworks/
-   install_name_tool -id "@executable_path/../Frameworks/librcp_bridge.dylib" macos/Runner/Frameworks/librcp_bridge.dylib
+   cp rust_bridge/target/release/librcpb.dylib macos/Runner/Frameworks/
+   install_name_tool -id "@executable_path/../Frameworks/librcpb.dylib" macos/Runner/Frameworks/librcpb.dylib
    ```
 
 3. Check that the library paths in `lib/utils/native_library.dart` include the correct location for your development environment.
@@ -109,8 +110,15 @@ rcp_client/
 │   ├── src/             # Rust source code
 │   ├── Cargo.toml       # Rust dependencies
 │   └── cbindgen.toml    # C binding configuration
-├── build_rust_bridge.sh # Script to build the Rust bridge
-├── copy_native_libs.sh  # Script to copy native libraries
+├── scripts/            # Helper scripts
+│   ├── build/          # Build-related scripts
+│   │   ├── build_rust_bridge.sh  # Script to build the Rust bridge
+│   │   ├── copy_native_libs.sh   # Script to copy native libraries
+│   │   ├── build_macos.sh        # macOS build script
+│   │   └── build_windows.sh      # Windows build script 
+│   └── ci/             # CI-related scripts
+│       ├── check_dependencies.sh # Dependency checker
+│       └── setup_dev_environment.sh # Dev environment setup
 └── [platform folders]   # Platform-specific code
 ```
 
@@ -121,7 +129,7 @@ rcp_client/
 Run the dependency check script to ensure all required components are installed:
 
 ```bash
-./check_dependencies.sh
+./scripts/ci/check_dependencies.sh
 ```
 
 ### 2. Build the Rust Bridge
@@ -129,8 +137,8 @@ Run the dependency check script to ensure all required components are installed:
 Build the Rust FFI bridge library for your platform:
 
 ```zsh
-chmod +x build_rust_bridge.sh
-./build_rust_bridge.sh
+chmod +x ./scripts/build/build_rust_bridge.sh
+./scripts/build/build_rust_bridge.sh
 ```
 
 ### 3. Copy Native Libraries
@@ -138,8 +146,8 @@ chmod +x build_rust_bridge.sh
 Copy the native libraries to platform-specific locations:
 
 ```zsh
-chmod +x copy_native_libs.sh
-./copy_native_libs.sh
+chmod +x ./scripts/build/copy_native_libs.sh
+./scripts/build/copy_native_libs.sh
 ```
 
 ### 4. Migrate to New Architecture (Optional)
@@ -147,8 +155,9 @@ chmod +x copy_native_libs.sh
 To update from the previous architecture to the dependency-free architecture:
 
 ```zsh
-chmod +x migrate.sh
-./migrate.sh
+# If you need to migrate from legacy architecture (only for older installations)
+chmod +x ./scripts/ci/migrate.sh
+./scripts/ci/migrate.sh
 ```
 
 This script backs up your files, makes necessary changes, and handles the migration process.
@@ -163,7 +172,7 @@ flutter run
 
 ### macOS
 
-For macOS, the library is automatically placed in the correct location by the `copy_native_libs.sh` script. If you need to manually place it:
+For macOS, the library is automatically placed in the correct location by the `scripts/build/copy_native_libs.sh` script. If you need to manually place it:
 
 ```zsh
 mkdir -p macos/Frameworks
@@ -181,7 +190,7 @@ cp build/native_assets/ios/librcpb.a ios/Frameworks/
 
 ### Android
 
-The `copy_native_libs.sh` script handles copying libraries for all architectures:
+The `scripts/build/copy_native_libs.sh` script handles copying libraries for all architectures:
 
 ```zsh
 # Libraries are automatically copied to:
@@ -201,7 +210,7 @@ The script handles platform-specific paths for Windows (.dll) and Linux (.so) li
 - Use `flutter pub get` to update Flutter dependencies
 - The `lib/services/rcp_bridge.dart` class handles FFI communication with the Rust code
 - The `lib/utils/native_library_manager.dart` utility handles platform-specific library loading
-- After changing Rust code, rebuild with `./build_rust_bridge.sh`
+- After changing Rust code, rebuild with `./scripts/build/build_rust_bridge.sh`
 
 ## Documentation
 
@@ -210,7 +219,8 @@ The script handles platform-specific paths for Windows (.dll) and Linux (.so) li
 - [MIGRATION_PLAN.md](MIGRATION_PLAN.md) - Plan for migrating to the new architecture
 - [NATIVE_LIBRARY_SETUP.md](NATIVE_LIBRARY_SETUP.md) - Instructions for setting up native libraries
 - [rust_bridge/CBINDGEN_CONFIG_DOCS.md](rust_bridge/CBINDGEN_CONFIG_DOCS.md) - Documentation for cbindgen configuration
-- [CI_CD_PROCESS.md](./CI_CD_PROCESS.md) - CI/CD Process Documentation
+- [CI_CD_PROCESS.md](CI_CD_PROCESS.md) - CI/CD Process Documentation
+- [.github/workflows/README.md](.github/workflows/README.md) - GitHub Actions workflows documentation
 
 ## Troubleshooting
 

@@ -84,16 +84,16 @@ jobs:
             rust-bridge-${{ runner.os }}-
       
       - name: Run clippy with warnings as errors
-        working-directory: ./rust
+        working-directory: ./rust_bridge
         run: cargo clippy --all-targets --all-features -- -D warnings
       
       - name: Check formatting
-        working-directory: ./rust
+        working-directory: ./rust_bridge
         run: cargo fmt --all -- --check
       
       - name: Build rust bridge
         if: steps.rust-bridge-cache.outputs.cache-hit != 'true'
-        run: ./build_rust_bridge.sh
+        run: ./scripts/build/build_rust_bridge.sh
       
       - name: Archive rust bridge artifacts
         uses: actions/upload-artifact@v4

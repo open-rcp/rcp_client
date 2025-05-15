@@ -17,7 +17,7 @@ void main() async {
   if (!File(sourcePath).existsSync()) {
     print('ERROR: Native library not found at $sourcePath');
     print('Please build the Rust library first with:');
-    print('cd rust && cargo build --release');
+    print('cd rust_bridge && cargo build --release');
     exit(1);
   }
 
