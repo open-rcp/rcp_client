@@ -16,9 +16,14 @@ command_exists() {
   command -v "$1" >/dev/null 2>&1
 }
 
+# Get the absolute path of the script directory
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+ROOT_DIR="$( cd "$SCRIPT_DIR/.." &> /dev/null && pwd )"
+
 # Setup Flutter environment
 setup_flutter() {
   log "Setting up Flutter..."
+  log "Project root directory: $ROOT_DIR"
   
   # Make sure flutter path is available
   if ! command_exists flutter; then

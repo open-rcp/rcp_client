@@ -4,9 +4,10 @@ set -e
 
 # Get the absolute path of the script directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-ROOT_DIR="$SCRIPT_DIR"
+ROOT_DIR="$( cd "$SCRIPT_DIR/../.." &> /dev/null && pwd )"  # Navigate up to project root
 
 echo "Building Flutter RCP Client for Windows..."
+echo "Project root directory: $ROOT_DIR"
 
 # Create output directory
 OUTPUT_DIR="$ROOT_DIR/rcp-client-windows"
@@ -15,8 +16,14 @@ mkdir -p "$OUTPUT_DIR"
 # Step 1: Ensure we have the bridge directory and necessary setup
 if [ ! -d "$ROOT_DIR/rust_bridge" ]; then
     echo "Error: rust_bridge directory not found!"
-    echo "Running setup_dev_environment.sh to create necessary directories..."
-    "$ROOT_DIR/setup_dev_environment.sh"
+    if [ -f "$SCRIPT_DIR/setup_dev_environment.sh" ]; then
+        echo "Running setup_dev_environment.sh to create necessary directories..."
+        chmod +x "$SCRIPT_DIR/setup_dev_environment.sh"
+        "$SCRIPT_DIR/setup_dev_environment.sh"
+    else
+        mkdir -p "$ROOT_DIR/rust_bridge"
+        echo "Created rust_bridge directory. Please ensure it's properly set up."
+    fi
 fi
 
 # Step 2: Build the Rust FFI bridge with Windows target
