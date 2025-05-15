@@ -121,7 +121,7 @@ jobs:
             deps_cmd: ""
           - os: macos-latest
             platform: macos
-            build_command: "flutter build macos --release --no-codesign"
+            build_command: "flutter build macos --release"
             output_path: "build/macos/Build/Products/Release/rcp_client.app"
             deps_cmd: ""
     
