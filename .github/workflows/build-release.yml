@@ -7,8 +7,17 @@ on:
         description: 'Release version (e.g., v1.0.0)'
         required: true
         default: 'v1.0.0'
+      platforms:
+        description: 'Platforms to build (comma-separated: macos,windows,linux,android,ios,all)'
+        required: false
+        default: 'all'
   push:
     tags: ['v*']
+
+# Prevent multiple workflow runs for the same ref (tag or branch)
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   setup:
@@ -32,6 +41,11 @@ jobs:
       
       - name: Run analyzer
         run: flutter analyze --no-fatal-infos
+        
+      - name: Validate dependencies
+        run: |
+          chmod +x ./scripts/ci/validate_dependencies.sh
+          ./scripts/ci/validate_dependencies.sh
       
       - name: Run tests
         run: flutter test
@@ -50,6 +64,8 @@ jobs:
     name: Build Rust Bridge
     runs-on: ubuntu-latest
     needs: setup
+    # Add timeout to prevent excessive build time
+    timeout-minutes: 30
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -72,9 +88,9 @@ jobs:
         uses: actions/cache@v3
         with:
           path: build/native_assets
-          key: rust-bridge-ubuntu-latest-${{ hashFiles('rust_bridge/**/*.rs', 'rust_bridge/**/*.toml', 'rust_bridge/Cargo.lock') }}
+          key: rust-bridge-${{ runner.os }}-${{ hashFiles('rust_bridge/**/*.rs', 'rust_bridge/**/*.toml', 'rust_bridge/Cargo.lock', 'scripts/build/build_rust_bridge.sh') }}
           restore-keys: |
-            rust-bridge-ubuntu-latest-
+            rust-bridge-${{ runner.os }}-
       
       - name: Run clippy
         working-directory: ./rust_bridge
@@ -98,6 +114,8 @@ jobs:
   build-macos:
     runs-on: macos-latest
     needs: [setup, build-rust-bridge]
+    if: ${{ !github.event.inputs.platforms || contains(github.event.inputs.platforms, 'macos') || github.event.inputs.platforms == 'all' }}
+    timeout-minutes: 45
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -108,6 +126,20 @@ jobs:
           channel: 'stable'
           flutter-version: '3.29.3'
           cache: true
+      
+      # Improved Flutter cache for macOS
+      - name: Cache macOS Flutter dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/Library/Caches/CocoaPods
+            ~/Library/Developer/Xcode/DerivedData
+            ~/Library/Caches/Pub
+            ~/.pub-cache
+            .dart_tool
+          key: macos-flutter-${{ hashFiles('**/pubspec.lock', 'ios/Podfile.lock', 'macos/Podfile.lock') }}
+          restore-keys: |
+            macos-flutter-
       
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -122,7 +154,7 @@ jobs:
           rustup target add x86_64-apple-ios
       
       - name: Download rust bridge
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: rust-bridge-lib
           path: build/native_assets/
@@ -155,6 +187,8 @@ jobs:
   build-windows:
     runs-on: windows-latest
     needs: [setup, build-rust-bridge]
+    if: ${{ !github.event.inputs.platforms || contains(github.event.inputs.platforms, 'windows') || github.event.inputs.platforms == 'all' }}
+    timeout-minutes: 45
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -179,7 +213,7 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
       
       - name: Download rust bridge
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: rust-bridge-lib
           path: build/native_assets/
@@ -207,8 +241,301 @@ jobs:
           name: rcp-client-windows
           path: rcp-client-windows/
           
+  build-linux:
+    runs-on: ubuntu-latest
+    needs: [setup, build-rust-bridge]
+    if: ${{ !github.event.inputs.platforms || contains(github.event.inputs.platforms, 'linux') || github.event.inputs.platforms == 'all' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          flutter-version: '3.29.3'
+          cache: true
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      
+      - name: Install Linux Rust targets
+        run: |
+          rustup target add x86_64-unknown-linux-gnu
+      
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libblkid-dev liblzma-dev libsecret-1-dev libjsoncpp-dev libsqlite3-dev pkg-config ninja-build clang cmake
+      
+      - name: Download rust bridge
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-bridge-lib
+          path: build/native_assets/
+      
+      - name: Install dependencies
+        run: |
+          flutter config --enable-linux-desktop
+          flutter pub get
+      
+      - name: Copy native libraries
+        run: |
+          chmod +x ./scripts/build/copy_native_libs.sh
+          ./scripts/build/copy_native_libs.sh
+      
+      - name: Build Linux application
+        run: |
+          if [ -f "./scripts/build/build_linux.sh" ]; then
+            chmod +x ./scripts/build/build_linux.sh
+            ./scripts/build/build_linux.sh
+          else
+            flutter build linux --release
+          fi
+      
+      - name: Package Linux build
+        run: |
+          mkdir -p rcp-client-linux
+          cp -r build/linux/x64/release/bundle/* rcp-client-linux/
+          # Add launcher script
+          echo '#!/bin/bash' > rcp-client-linux/launch.sh
+          echo 'cd "$(dirname "$0")"' >> rcp-client-linux/launch.sh
+          echo './rcp_client' >> rcp-client-linux/launch.sh
+          chmod +x rcp-client-linux/launch.sh
+      
+      - name: Archive Linux build
+        uses: actions/upload-artifact@v4
+        with:
+          name: rcp-client-linux
+          path: rcp-client-linux/
+          
+  build-android:
+    runs-on: ubuntu-latest
+    needs: [setup, build-rust-bridge]
+    if: ${{ !github.event.inputs.platforms || contains(github.event.inputs.platforms, 'android') || github.event.inputs.platforms == 'all' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Java
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          flutter-version: '3.29.3'
+          cache: true
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
+      
+      - name: Install Android NDK
+        run: |
+          sdkmanager --install "ndk;25.2.9519653" "cmake;3.22.1"
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/25.2.9519653" >> $GITHUB_ENV
+      
+      - name: Install Android Rust targets
+        run: |
+          rustup target add aarch64-linux-android
+          rustup target add armv7-linux-androideabi
+          rustup target add x86_64-linux-android
+          rustup target add i686-linux-android
+      
+      - name: Setup cargo-ndk
+        run: |
+          cargo install cargo-ndk
+      
+      - name: Download rust bridge
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-bridge-lib
+          path: build/native_assets/
+      
+      - name: Install dependencies
+        run: |
+          flutter pub get
+      
+      - name: Build Android AAR/JNI libraries manually
+        run: |
+          cd rust_bridge
+          # Set up Android build environment
+          export ANDROID_NDK_HOME="${ANDROID_NDK_HOME:-$ANDROID_SDK_ROOT/ndk/25.2.9519653}"
+          export PATH=$PATH:$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin
+          
+          # Try building with cargo-ndk with retries
+          max_attempts=3
+          attempt=1
+          success=false
+          
+          while [ $attempt -le $max_attempts ]; do
+            echo "Attempt $attempt of $max_attempts for cargo-ndk build"
+            
+            if cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -t x86 \
+               --platform 33 -o ../android/app/src/main/jniLibs build --release; then
+              echo "✅ Android libraries built successfully"
+              success=true
+              break
+            else
+              echo "❌ Attempt $attempt failed"
+              if [ $attempt -lt $max_attempts ]; then
+                echo "Waiting 15 seconds before retry..."
+                sleep 15
+              fi
+              attempt=$((attempt+1))
+            fi
+          done
+          
+          cd ..
+          
+          if [ "$success" != "true" ]; then
+            echo "::warning::Failed to build Android libraries with cargo-ndk after $max_attempts attempts."
+            echo "Continuing with the build process using cached libraries..."
+          fi
+      
+      - name: Copy native libraries (if needed)
+        run: |
+          if [ -f "./scripts/build/copy_native_libs.sh" ]; then
+            chmod +x ./scripts/build/copy_native_libs.sh
+            ./scripts/build/copy_native_libs.sh
+          fi
+      
+      - name: Build Android APK
+        run: |
+          if [ -f "./scripts/build/build_android.sh" ]; then
+            chmod +x ./scripts/build/build_android.sh
+            ./scripts/build/build_android.sh
+          else
+            flutter build apk --release --split-per-abi
+          fi
+      
+      - name: Archive Android build
+        uses: actions/upload-artifact@v4
+        with:
+          name: rcp-client-android
+          path: build/app/outputs/apk/release/
+          retention-days: 7
+          
+  build-ios:
+    runs-on: macos-latest
+    needs: [setup, build-rust-bridge]
+    if: ${{ !github.event.inputs.platforms || contains(github.event.inputs.platforms, 'ios') || github.event.inputs.platforms == 'all' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          flutter-version: '3.29.3'
+          cache: true
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      
+      - name: Install iOS Rust targets
+        run: |
+          rustup target add aarch64-apple-ios
+          rustup target add x86_64-apple-ios
+      
+      - name: Download rust bridge
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-bridge-lib
+          path: build/native_assets/
+      
+      - name: Install dependencies
+        run: |
+          flutter pub get
+          cd ios && pod install && cd ..
+      
+      - name: Copy native libraries (if needed)
+        run: |
+          if [ -f "./scripts/build/copy_native_libs.sh" ]; then
+            chmod +x ./scripts/build/copy_native_libs.sh
+            ./scripts/build/copy_native_libs.sh
+          fi
+      
+      - name: Update signing configuration
+        run: |
+          # Create a temporary export options plist for non-signed builds
+          cat > ios/ExportOptions.plist << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>development</string>
+            <key>compileBitcode</key>
+            <false/>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>com.example.rcpClient</key>
+              <string>iOS Team Provisioning Profile: com.example.rcpClient</string>
+            </dict>
+          </dict>
+          </plist>
+          EOF
+      
+      - name: Build iOS app
+        run: |
+          # Function to attempt Flutter iOS build
+          attempt_ios_build() {
+            if [ -f "./scripts/build/build_ios.sh" ]; then
+              chmod +x ./scripts/build/build_ios.sh
+              ./scripts/build/build_ios.sh
+            else
+              flutter build ios --release --no-codesign
+            fi
+          }
+          
+          # Try up to 3 times with exponential backoff
+          max_attempts=3
+          for ((attempt=1; attempt<=max_attempts; attempt++)); do
+            echo "🚀 iOS build attempt $attempt of $max_attempts"
+            
+            if attempt_ios_build; then
+              echo "✅ iOS build succeeded!"
+              exit 0
+            else
+              echo "❌ iOS build attempt $attempt failed"
+              if [ "$attempt" -lt "$max_attempts" ]; then
+                sleep_time=$((10 * attempt))
+                echo "⏱️ Waiting $sleep_time seconds before retrying..."
+                sleep $sleep_time
+                
+                echo "🧹 Cleaning build cache for next attempt"
+                flutter clean
+                cd ios && pod install && cd ..
+              fi
+            fi
+          done
+          
+          echo "::error::iOS build failed after $max_attempts attempts"
+          exit 1
+      
+      - name: Archive iOS build
+        uses: actions/upload-artifact@v4
+        with:
+          name: rcp-client-ios
+          path: build/ios/iphoneos/
+          retention-days: 7
+          
   create-release:
-    needs: [setup, build-macos, build-windows]
+    needs: [setup, build-macos, build-windows, build-linux, build-android, build-ios]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
@@ -218,7 +545,7 @@ jobs:
           fetch-depth: 0
       
       - name: Download all artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
           
@@ -249,17 +576,83 @@ jobs:
           
       - name: Create ZIP archives
         run: |
-          cd artifacts/rcp-client-macos
-          zip -r ../../rcp-client-macos.zip .
-          cd ../rcp-client-windows  
-          zip -r ../../rcp-client-windows.zip .
+          # Initialize the list of available artifacts
+          ARTIFACTS_LIST=""
+          
+          # Handle macOS artifacts if available
+          if [ -d "artifacts/rcp-client-macos" ] && [ "$(ls -A artifacts/rcp-client-macos)" ]; then
+            cd artifacts/rcp-client-macos
+            zip -r ../../rcp-client-macos.zip .
+            cd ../..
+            echo "rcp-client-macos.zip" >> artifacts_list.txt
+            echo "✅ macOS artifacts packaged"
+          else
+            echo "⚠️ No macOS artifacts found, skipping"
+          fi
+          
+          # Handle Windows artifacts if available
+          if [ -d "artifacts/rcp-client-windows" ] && [ "$(ls -A artifacts/rcp-client-windows)" ]; then
+            cd artifacts/rcp-client-windows
+            zip -r ../../rcp-client-windows.zip .
+            cd ../..
+            echo "rcp-client-windows.zip" >> artifacts_list.txt
+            echo "✅ Windows artifacts packaged"
+          else
+            echo "⚠️ No Windows artifacts found, skipping"
+          fi
+          
+          # Handle Linux artifacts if available
+          if [ -d "artifacts/rcp-client-linux" ] && [ "$(ls -A artifacts/rcp-client-linux)" ]; then
+            cd artifacts/rcp-client-linux
+            zip -r ../../rcp-client-linux.zip .
+            cd ../..
+            echo "rcp-client-linux.zip" >> artifacts_list.txt
+            echo "✅ Linux artifacts packaged"
+          else
+            echo "⚠️ No Linux artifacts found, skipping"
+          fi
+          
+          # Handle Android artifacts if available
+          if [ -d "artifacts/rcp-client-android" ] && [ "$(ls -A artifacts/rcp-client-android)" ]; then
+            # Package Android APKs
+            mkdir -p android-packaged
+            cp -r artifacts/rcp-client-android/* android-packaged/
+            cd android-packaged
+            zip -r ../rcp-client-android.zip .
+            cd ..
+            echo "rcp-client-android.zip" >> artifacts_list.txt
+            echo "✅ Android artifacts packaged"
+          else
+            echo "⚠️ No Android artifacts found, skipping"
+          fi
+          
+          # Handle iOS artifacts if available
+          if [ -d "artifacts/rcp-client-ios" ] && [ "$(ls -A artifacts/rcp-client-ios)" ]; then
+            # Package iOS build
+            cd artifacts/rcp-client-ios
+            zip -r ../../rcp-client-ios.zip .
+            cd ../..
+            echo "rcp-client-ios.zip" >> artifacts_list.txt
+            echo "✅ iOS artifacts packaged"
+          else
+            echo "⚠️ No iOS artifacts found, skipping"
+          fi
+          
+          echo "Available artifacts for release:"
+          cat artifacts_list.txt
+      
+      - name: Generate files list for release
+        id: release_files
+        run: |
+          files=$(cat artifacts_list.txt | sed 's/^/            /g')
+          echo "FILES<<EOF" >> $GITHUB_OUTPUT
+          echo "$files" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
           
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: |
-            rcp-client-macos.zip
-            rcp-client-windows.zip
+          files: ${{ steps.release_files.outputs.FILES }}
           body_path: RELEASE_NOTES.md
           draft: true
           tag_name: ${{ needs.setup.outputs.version }}
