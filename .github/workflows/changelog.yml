@@ -1,15 +1,6 @@
-name: Changelog Preparation
+name: Update Changelog
 
 on:
-  push:
-    branches:
-      - master
-      - main
-  pull_request:
-    types: [closed]
-    branches:
-      - master
-      - main
   workflow_dispatch:
     inputs:
       release_version:
@@ -18,7 +9,6 @@ on:
 
 jobs:
   update_changelog:
-    if: github.event_name == 'push' || github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -41,7 +31,7 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "version=${{ github.event.inputs.release_version }}" >> $GITHUB_OUTPUT
           else
-            # Try to detect version from git tags first (for autonomous releases)
+            # Try to detect version from git tags
             latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
             if [[ "$latest_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
               echo "version=$latest_tag" >> $GITHUB_OUTPUT
@@ -67,6 +57,7 @@ jobs:
       - name: Generate changelog entry
         id: changelog
         run: |
+          # Create a temporary file for the new changelog entry
           echo "## [${{ steps.version.outputs.version }}] - $(date '+%Y-%m-%d')" > temp_changelog.md
           echo "" >> temp_changelog.md
           
@@ -141,36 +132,22 @@ jobs:
           # Clean up the temporary file
           rm -f temp_changelog.md
       
-      - name: Create Pull Request or Commit Directly
+      - name: Create Pull Request
         run: |
           # Check if there are any changes to commit
           if git diff --quiet CHANGELOG.md; then
-            echo "No changes to CHANGELOG.md, skipping commit"
-          else
-            if [ "${{ github.event_name }}" = "push" ]; then
-              # In autonomous mode, commit directly to the branch
-              git add CHANGELOG.md
-              git commit -m "docs: update changelog for ${{ steps.version.outputs.version }}"
-              git push
-            elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-              # For manual triggers, create a PR
-              git checkout -b "changelog-${{ steps.version.outputs.version }}"
-              git add CHANGELOG.md
-              git commit -m "docs: update changelog for ${{ steps.version.outputs.version }}"
-              git push --set-upstream origin "changelog-${{ steps.version.outputs.version }}"
-              gh pr create --title "Update CHANGELOG for ${{ steps.version.outputs.version }}" --body "Automatically generated changelog for ${{ steps.version.outputs.version }}" --label "documentation" || echo "Failed to create PR, but changes were pushed to branch"
-            fi
+            echo "No changes to CHANGELOG.md, skipping PR creation"
+            exit 0
           fi
+          
+          # Create branch for PR
+          git checkout -b "changelog-${{ steps.version.outputs.version }}"
+          git add CHANGELOG.md
+          git commit -m "docs: update changelog for ${{ steps.version.outputs.version }}"
+          git push --set-upstream origin "changelog-${{ steps.version.outputs.version }}"
+          
+          gh pr create --title "Update CHANGELOG for ${{ steps.version.outputs.version }}" \
+                      --body "Automatically generated changelog for ${{ steps.version.outputs.version }}" \
+                      --label "documentation" || echo "Failed to create PR, but changes were pushed to branch"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Create Pull Request (fallback)
-        if: github.event_name == 'workflow_dispatch' && failure()
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "docs: update changelog for ${{ steps.version.outputs.version }}"
-          title: "Update CHANGELOG for ${{ steps.version.outputs.version }}"
-          body: "Automatically generated changelog for ${{ steps.version.outputs.version }}"
-          branch: "changelog-${{ steps.version.outputs.version }}"
-          labels: "documentation"

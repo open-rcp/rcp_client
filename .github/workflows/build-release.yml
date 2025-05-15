@@ -11,18 +11,108 @@ on:
     tags: ['v*']
 
 jobs:
-  build-macos:
-    runs-on: macos-latest
+  setup:
+    name: Setup and Test
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+          flutter-version: '3.29.3'
+          cache: true
       
-      - name: Install Rust
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Run analyzer
+        run: flutter analyze --no-fatal-infos
+      
+      - name: Run tests
+        run: flutter test
+      
+      - name: Get version
+        id: get_version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "version=${{ github.event.inputs.release_version }}" >> $GITHUB_OUTPUT
+          else
+            # Extract version from tag name
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+  build-rust-bridge:
+    name: Build Rust Bridge
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "rust -> target, rust_bridge -> target"
+      
+      - name: Run clippy
+        working-directory: ./rust
+        run: cargo clippy --all-targets --all-features -- -D warnings
+      
+      - name: Check formatting
+        working-directory: ./rust
+        run: cargo fmt --all -- --check
+      
+      - name: Build rust bridge (default target)
+        run: ./build_rust_bridge.sh
+      
+      - name: Archive rust bridge
+        uses: actions/upload-artifact@v3
+        with:
+          name: rust-bridge-lib
+          path: build/native_assets/
+          retention-days: 1
+
+  build-macos:
+    runs-on: macos-latest
+    needs: [setup, build-rust-bridge]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          flutter-version: '3.29.3'
+          cache: true
+      
+      - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+      
+      - name: Install macOS Rust targets
+        run: |
+          rustup target add aarch64-apple-darwin
+          rustup target add x86_64-apple-darwin
+          rustup target add aarch64-apple-ios
+          rustup target add x86_64-apple-ios
+      
+      - name: Download rust bridge
+        uses: actions/download-artifact@v3
+        with:
+          name: rust-bridge-lib
+          path: build/native_assets/
       
       - name: Setup CI environment
         run: |
@@ -32,6 +122,11 @@ jobs:
       - name: Install dependencies
         run: |
           flutter pub get
+      
+      - name: Copy native libraries
+        run: |
+          chmod +x ./copy_native_libs.sh
+          ./copy_native_libs.sh
       
       - name: Build macOS app
         run: |
@@ -46,25 +141,46 @@ jobs:
   
   build-windows:
     runs-on: windows-latest
+    needs: [setup, build-rust-bridge]
     steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+          flutter-version: '3.29.3'
+          cache: true
       
-      - name: Install Rust
+      - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-          targets: x86_64-pc-windows-msvc
+      
+      - name: Install Windows Rust targets
+        run: |
+          rustup target add x86_64-pc-windows-msvc
       
       - name: Setup Visual Studio tools
         uses: ilammy/msvc-dev-cmd@v1
+      
+      - name: Download rust bridge
+        uses: actions/download-artifact@v3
+        with:
+          name: rust-bridge-lib
+          path: build/native_assets/
       
       - name: Install dependencies
         run: |
           flutter config --enable-windows-desktop
           flutter pub get
+      
+      - name: Copy native libraries
+        shell: bash
+        run: |
+          chmod +x ./copy_native_libs.sh
+          ./copy_native_libs.sh
       
       - name: Build Windows application
         shell: bash
@@ -79,14 +195,44 @@ jobs:
           path: rcp-client-windows/
           
   create-release:
-    needs: [build-macos, build-windows]
+    needs: [setup, build-macos, build-windows]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
       - name: Download all artifacts
         uses: actions/download-artifact@v3
         with:
           path: artifacts
+          
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get previous tag
+          prev_tag=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$prev_tag" ]; then
+            prev_tag="HEAD~100"
+            echo "No previous tag found, using earliest commits"
+          fi
+          
+          echo "## Changes in ${{ needs.setup.outputs.version }}" > RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          
+          # Features
+          echo "### Features" >> RELEASE_NOTES.md
+          git log $prev_tag..HEAD --pretty=format:"- %s" --grep="^feat\|^add" | grep -v "^$" | sort >> RELEASE_NOTES.md || echo "- No new features in this release" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          
+          # Bug fixes
+          echo "### Bug Fixes" >> RELEASE_NOTES.md
+          git log $prev_tag..HEAD --pretty=format:"- %s" --grep="^fix" | grep -v "^$" | sort >> RELEASE_NOTES.md || echo "- No bug fixes in this release" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          
+          cat RELEASE_NOTES.md
           
       - name: Create ZIP archives
         run: |
@@ -101,5 +247,6 @@ jobs:
           files: |
             rcp-client-macos.zip
             rcp-client-windows.zip
+          body_path: RELEASE_NOTES.md
           draft: true
-          generate_release_notes: true
+          tag_name: ${{ needs.setup.outputs.version }}
